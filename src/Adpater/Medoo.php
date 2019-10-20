@@ -6,6 +6,15 @@ use Medoo\Medoo as Db;
 
 class Medoo extends _Abstract
 {
+    public $config = array(
+        'database_type' => 'mysql',
+        'database_name' => 'mysql',
+        'server' => 'localhost',
+        'username' => '',
+        'password' => '',
+        'port' => '3306',
+    );
+
     public function __construct($config, $options)
     {
         $config = $this->setConfig($config, $options);
@@ -14,9 +23,22 @@ class Medoo extends _Abstract
 
     public function setConfig($config, $options)
     {
+        $arr = array_merge($this->config, $config);
         if (isset($options['db_name']) && $options['db_name']) {
-            $config['database_name'] = $options['db_name'];
+            $arr['database_name'] = $options['db_name'];
         }
-        return $config;
+        $arr = $this->array_keys_clean($arr);
+        return $arr;
+    }
+
+    public function array_keys_clean($arr)
+    {
+        $item = array('database_type', 'database_name', 'server', 'username', 'password', 'port');
+        foreach ($arr as $key => $value) {
+            if (!in_array($key, $item)) {
+                unset($arr[$key]);
+            }
+        }
+        return $arr;
     }
 }
