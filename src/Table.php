@@ -13,15 +13,19 @@ class Table
             'catfan/medoo' => 'Medoo',
         );
 
+        $options = array(
+            'db_name' => $this->db_name,
+        );
+
         if (array_key_exists($name, $names)) {
             $file = $names[$name];
-            $class = "Topdb\\Adapter\\$file";
-            $this->adpater = new $class($config);
+            $class = "\\Topdb\\Adpater\\$file";
+            $this->adpater = new $class($config, $options);
         }
     }
 
     public function query($sql)
     {
-        return $this->adapter->query($sql);
+        return $this->adpater->query($sql);
     }
 }
