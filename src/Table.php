@@ -5,9 +5,15 @@ namespace Topdb;
 class Table
 {
     public $adpater = null;
+    public static $data = array(
+        'config' => [],
+        'name' => 'catfan/medoo',
+    );
 
-    public function __construct($config = [], $name = 'catfan/medoo')
+    public function __construct($config = [], $name = null)
     {
+        $config = $config ? : self::$data['config'];
+        $name = $name ? : self::$data['name'];
         $names = array(
             'wuding/topdb' => 'Topdb',
             'catfan/medoo' => 'Medoo',
@@ -27,5 +33,16 @@ class Table
     public function query($sql)
     {
         return $this->adpater->query($sql);
+    }
+
+    public static function init($config = [], $name = null)
+    {
+        if ($config) {
+            self::$data['config'] = $config;
+        }
+
+        if ($name) {
+            self::$data['name'] = $name;
+        }
     }
 }
