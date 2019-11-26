@@ -41,4 +41,9 @@ class Medoo extends _Abstract
         }
         return $arr;
     }
+
+    public function exec($statement)
+    {
+        return $this->database->pdo->exec($statement);
+    }
 }

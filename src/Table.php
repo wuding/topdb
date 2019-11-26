@@ -35,6 +35,11 @@ class Table
         return $this->adpater->query($sql);
     }
 
+    public function exec($statement)
+    {
+        return $this->adpater->exec($statement);
+    }
+
     public static function init($config = [], $name = null)
     {
         if ($config) {
