@@ -9,25 +9,14 @@ class Table
         'config' => [],
         'name' => 'catfan/medoo',
     );
+    public static $names = array(
+        'wuding/topdb' => 'Topdb',
+        'catfan/medoo' => 'Medoo',
+    );
 
     public function __construct($config = [], $name = null)
     {
-        $config = $config ? : self::$data['config'];
-        $name = $name ? : self::$data['name'];
-        $names = array(
-            'wuding/topdb' => 'Topdb',
-            'catfan/medoo' => 'Medoo',
-        );
-
-        $options = array(
-            'db_name' => $this->db_name,
-        );
-
-        if (array_key_exists($name, $names)) {
-            $file = $names[$name];
-            $class = "\\Topdb\\Adpater\\$file";
-            $this->adpater = new $class($config, $options);
-        }
+        $this->inst();
     }
 
     public function query($sql)
@@ -49,5 +38,25 @@ class Table
         if ($name) {
             self::$data['name'] = $name;
         }
+    }
+
+    public function initAdpater($options = [], $config = [], $name = null)
+    {
+        $config = $config ? : self::$data['config'];
+        $name = $name ? : self::$data['name'];
+        $names = self::$names;
+        if (array_key_exists($name, $names)) {
+            $file = $names[$name];
+            $class = "\\Topdb\\Adpater\\$file";
+            $this->adpater = new $class($config, $options);
+        }
+    }
+
+    public function inst()
+    {
+        $options = array(
+            'db_name' => $this->db_name,
+        );
+        $this->initAdpater($options);
     }
 }
