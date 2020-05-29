@@ -49,6 +49,7 @@ class Table
             $file = $names[$name];
             $class = "\\Topdb\\Adpater\\$file";
             $this->adpater = new $class($config, $options);
+            $this->db = $this->adpater->database;
         }
     }
 
