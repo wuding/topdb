@@ -7,7 +7,7 @@ class Table
     public $adpater = null;
     public static $data = array(
         'config' => [],
-        'name' => 'catfan/medoo',
+        'name' => 'wuding/topdb',
     );
     public static $names = array(
         'wuding/topdb' => 'Topdb',
@@ -59,5 +59,20 @@ class Table
             'db_name' => $this->db_name,
         );
         $this->initAdpater($options);
+    }
+
+    public function __call($name, $arguments)
+    {
+        $result = null;
+        $arr = [];
+        foreach ($arguments as $key => $value) {
+            if (is_string($value)) {
+                $value = "\"$value\"";
+            }
+            $arr[] = $value;
+        }
+        $imp = implode(', ', $arr);
+        eval("\$result = \$this->adpater->\$name($imp);");
+        return $result;
     }
 }

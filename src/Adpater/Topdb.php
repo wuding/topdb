@@ -40,8 +40,18 @@ class Topdb extends _Abstract
         return $arr;
     }
 
-    public function exec($statement)
+    public function __call($name, $arguments)
     {
-        return $this->database->pdo->exec($statement);
+        $result = null;
+        $arr = [];
+        foreach ($arguments as $key => $value) {
+            if (is_string($value)) {
+                $value = "\"$value\"";
+            }
+            $arr[] = $value;
+        }
+        $imp = implode(', ', $arr);
+        eval("\$result = \$this->database->\$name($imp);");
+        return $result;
     }
 }
