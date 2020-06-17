@@ -66,21 +66,7 @@ class Table
 
     public function __call($name, $arguments)
     {
-        $result = null;
-        $arr = [];
-        $this->adpater->tmpArr = [];
-        foreach ($arguments as $key => $value) {
-            if (is_array($value)) {
-                $this->adpater->tmpArr[$key] = $value;
-                $value = '"__'. $key .'__"';
-            } elseif (is_string($value)) {
-                $value = "\"$value\"";
-            }
-            $arr[] = $value;
-        }
-        $imp = implode(', ', $arr);
-        eval("\$result = \$this->adpater->\$name($imp);");
-        return $result;
+        return call_user_func_array(array($this->adpater, $name), $arguments);
     }
 
     public function getVars()

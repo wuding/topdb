@@ -64,10 +64,6 @@ class Topdb extends _Abstract
 
     public function insert($data = [])
     {
-        if (is_string($data) && preg_match('/^__(.*)__$/', $data, $matches)) {
-            $data = $this->tmpArr[$matches[1]];
-        }
-
         $pieces = array();
         $ins = null;
         foreach ($data as $key => $value) {
@@ -84,7 +80,7 @@ class Topdb extends _Abstract
 
             // 键值对，忽略空值
             $vt = trim($value);
-            if ($vt || is_numeric($vt)) {
+            if ($vt || !is_string($vt)) {
                 $vs = addslashes($vt);
                 $pieces[] = "$key = '$vs'";
             }
