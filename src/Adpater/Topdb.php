@@ -49,17 +49,7 @@ class Topdb extends _Abstract
 
     public function __call($name, $arguments)
     {
-        $result = null;
-        $arr = [];
-        foreach ($arguments as $key => $value) {
-            if (is_string($value)) {
-                $value = "\"$value\"";
-            }
-            $arr[] = $value;
-        }
-        $imp = implode(', ', $arr);
-        eval("\$result = \$this->database->\$name($imp);");
-        return $result;
+        return call_user_func_array(array($this->database, $name), $arguments);
     }
 
     public function insert($data = [])
