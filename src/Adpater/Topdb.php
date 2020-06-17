@@ -29,6 +29,13 @@ class Topdb extends _Abstract
         return $arr;
     }
 
+    public function setVars($data = [])
+    {
+        foreach ($data as $key => $value) {
+            $this->$key = $value;
+        }
+    }
+
     public function array_keys_clean($arr)
     {
         $item = array('host', 'username', 'password', 'port', 'db_name');
@@ -53,5 +60,41 @@ class Topdb extends _Abstract
         $imp = implode(', ', $arr);
         eval("\$result = \$this->database->\$name($imp);");
         return $result;
+    }
+
+    public function insert($data = [])
+    {
+        if (is_string($data) && preg_match('/^__(.*)__$/', $data, $matches)) {
+            $data = $this->tmpArr[$matches[1]];
+        }
+
+        $pieces = array();
+        $ins = null;
+        foreach ($data as $key => $value) {
+            // 自定义值
+            if (is_numeric($key)) {
+                $pieces[] = $value;
+                continue 1;
+            } elseif ($this->fields) { // 忽略非字段名
+                $fields = explode(',', $this->fields);
+                if (!in_array($key, $fields)) {
+                    continue 1;
+                }
+            }
+
+            // 键值对，忽略空值
+            $vt = trim($value);
+            if ($vt || is_numeric($vt)) {
+                $vs = addslashes($vt);
+                $pieces[] = "$key = '$vs'";
+            }
+        }
+
+        if ($pieces) {
+            $set = implode(', ', $pieces);
+            $sql = "INSERT INTO $this->table_name SET $set";
+            $ins = $this->database->insert($sql);
+        }
+        return $ins;
     }
 }

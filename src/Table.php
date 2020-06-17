@@ -5,6 +5,7 @@ namespace Topdb;
 class Table
 {
     public $adpater = null;
+    public $fields = '';
     public static $data = array(
         'config' => [],
         'name' => 'wuding/topdb',
@@ -49,6 +50,8 @@ class Table
             $file = $names[$name];
             $class = "\\Topdb\\Adpater\\$file";
             $this->adpater = new $class($config, $options);
+            $vars = $this->getVars();
+            $this->adpater->setVars($vars);
             $this->db = $this->adpater->database;
         }
     }
@@ -65,8 +68,12 @@ class Table
     {
         $result = null;
         $arr = [];
+        $this->adpater->tmpArr = [];
         foreach ($arguments as $key => $value) {
-            if (is_string($value)) {
+            if (is_array($value)) {
+                $this->adpater->tmpArr[$key] = $value;
+                $value = '"__'. $key .'__"';
+            } elseif (is_string($value)) {
                 $value = "\"$value\"";
             }
             $arr[] = $value;
@@ -74,5 +81,15 @@ class Table
         $imp = implode(', ', $arr);
         eval("\$result = \$this->adpater->\$name($imp);");
         return $result;
+    }
+
+    public function getVars()
+    {
+        $variable = ['table_name', 'fields'];
+        $vars = [];
+        foreach ($variable as $value) {
+            $vars[$value] = $this->$value;
+        }
+        return $vars;
     }
 }
