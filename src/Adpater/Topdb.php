@@ -69,10 +69,12 @@ class Topdb extends _Abstract
             }
 
             // 键值对，忽略空值
-            $vt = trim($value);
-            if ($vt || !is_string($vt)) {
+            $vt = is_string($value) ? trim($value) : $value;
+            if ($vt) {
                 $vs = addslashes($vt);
                 $pieces[] = "$key = '$vs'";
+            } elseif (!is_string($vt)) {
+                $pieces[] = "$key = $vt";
             }
         }
 
