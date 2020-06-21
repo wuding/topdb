@@ -1,24 +1,35 @@
 <?php
 
-namespace Topdb\Adpater;
+namespace Topdb\Adapter;
 
-use Ext\PhpPdoMysql as Db;
+use Ext\PhpPdoMysql;
 
 class Topdb extends _Abstract
 {
     public $config = array(
         'db_type' => 'mysql',
-        'db_name' => 'mysql',
+        'dbname' => 'mysql',
         'host' => 'localhost',
         'username' => '',
         'password' => '',
         'port' => '3306',
     );
 
+    /*
+    +---------------------------------------
+    + 基本
+    +---------------------------------------
+    */
+
     public function __construct($config, $options)
     {
         $conf = $this->setConfig($config, $options);
-        $this->database = new Db($conf);
+        $this->database = new PhpPdoMysql($conf);
+    }
+
+    public function __call($name, $arguments)
+    {
+        return call_user_func_array(array($this->database, $name), $arguments);
     }
 
     public function setConfig($config, $options)
@@ -29,28 +40,11 @@ class Topdb extends _Abstract
         return $arr;
     }
 
-    public function setVars($data = [])
-    {
-        foreach ($data as $key => $value) {
-            $this->$key = $value;
-        }
-    }
-
-    public function array_keys_clean($arr)
-    {
-        $item = array('host', 'username', 'password', 'port', 'db_name');
-        foreach ($arr as $key => $value) {
-            if (!in_array($key, $item)) {
-                unset($arr[$key]);
-            }
-        }
-        return $arr;
-    }
-
-    public function __call($name, $arguments)
-    {
-        return call_user_func_array(array($this->database, $name), $arguments);
-    }
+    /*
+    +---------------------------------------
+    + CRUD
+    +---------------------------------------
+    */
 
     public function insert($data = [])
     {
@@ -70,9 +64,10 @@ class Topdb extends _Abstract
 
             // 键值对，忽略空值
             $vt = is_string($value) ? trim($value) : $value;
-            if ($vt) {
+            if ($vt || is_string($vt)) {
                 $vs = addslashes($vt);
                 $pieces[] = "$key = '$vs'";
+            } elseif (is_bool($vt)) {
             } elseif (!is_string($vt)) {
                 $pieces[] = "$key = $vt";
             }
@@ -84,5 +79,22 @@ class Topdb extends _Abstract
             $ins = $this->database->insert($sql);
         }
         return $ins;
+    }
+
+    /*
+    +---------------------------------------
+    + 补充
+    +---------------------------------------
+    */
+
+    public function array_keys_clean($arr)
+    {
+        $item = array('host', 'username', 'password', 'port', 'dbname');
+        foreach ($arr as $key => $value) {
+            if (!in_array($key, $item)) {
+                unset($arr[$key]);
+            }
+        }
+        return $arr;
     }
 }
