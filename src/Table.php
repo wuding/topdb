@@ -84,7 +84,7 @@ class Table
 
     /*
     +---------------------------------------
-    + 基本
+    + 覆盖
     +---------------------------------------
     */
 
@@ -93,9 +93,15 @@ class Table
         return $this->adapter->exec($statement);
     }
 
-    public function query($sql)
+    public function query()
     {
-        return $this->adapter->query($sql);
+        $arr = call_user_func_array([$this->adapter, 'query'], func_get_args());
+        $count = count($arr);
+        if (1 < $count) {
+            print_r(["count $count", $arr, __FILE__, __LINE__]);
+            exit;
+        }
+        return array_shift($arr);
     }
 
     /*
@@ -224,6 +230,24 @@ class Table
         }
         $sql .= " LIMIT $limit";
         return $this->logs($sql, $call ? : 'get') ? : $this->adapter->get($sql);
+    }
+
+    /*
+    +---------------------------------------
+    + 聚合
+    +---------------------------------------
+    */
+
+    public function count($where = null, $column_name = 0)
+    {
+        $db_table = $this->from();
+        $sql = "SELECT COUNT($column_name) AS num FROM $db_table";
+        $where = $this->sqlWhere($where);
+        if ($where) {
+            $sql .= " WHERE $where";
+        }
+        $row = $this->logs($sql, 'count') ? : $this->adapter->get($sql);
+        return $num = $row ? (is_object($row) ? $row->num : $row) : $row;
     }
 
     /*

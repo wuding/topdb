@@ -25,8 +25,8 @@ class _Abstract
     +---------------------------------------
     */
 
-    public function query($sql)
+    public function query()
     {
-        return $this->database->query($sql);
+        return call_user_func_array([$this->database, 'query'], func_get_args());
     }
 }
