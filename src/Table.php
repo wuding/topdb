@@ -133,7 +133,7 @@ class Table
         foreach ($data as $key => $value) {
             if (is_numeric($key)) {
                 $arr[] = $value;
-            } else {
+            } elseif ($key) {
                 $val = 'NULL';
                 if (null !== $value) {
                     $value = addslashes($value);
