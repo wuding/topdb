@@ -20,6 +20,8 @@ class Topdb extends _Abstract
         'string' => true,
         'array' => null,
         'object' => null,
+        'integer' => null,
+        'double' => null,
     ];
     public $ignore_values = [];
     public $ignore_fields = [];
@@ -110,7 +112,7 @@ class Topdb extends _Abstract
                 $value = json_encode($value);
                 $value = addslashes($value);
 
-            } elseif ('integer' == $type) {
+            } elseif (in_array($type, ['integer', 'double'])) {
                 $quote = 0;
 
             } elseif ('bool' == $type) {

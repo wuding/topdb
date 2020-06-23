@@ -192,7 +192,6 @@ class Table
         if ($whereSql) {
             $condition .= " WHERE $whereSql";
         }
-
         if ($order) {
             $condition .= " ORDER BY $order";
         }
@@ -200,7 +199,9 @@ class Table
             $condition .= " LIMIT $limit";
         }
         $sql .= $condition;
-        $exec = $this->logs($sql, $call ? : 'update') ? : array($this->exec($sql));
+
+        $arr = array($this->exec($sql));
+        $exec = $this->logs($sql, $call ?: 'update', $arr) ?: $arr;
         return $exec;
     }
 
@@ -256,11 +257,15 @@ class Table
     +---------------------------------------
     */
 
-    public function logs($sql, $type = null)
+    public function logs($sql, $type = null, $arr = null)
     {
         if (is_array($this->return)) {
             if (in_array($type, $this->return)) {
                 $this->logs[] = $sql;
+                if (is_array($arr)) {
+                    $arr[] = $sql;
+                    return $arr;
+                }
             }
         } elseif (is_string($this->return) && $type === $this->return) {
             return $sql;
