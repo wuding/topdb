@@ -98,6 +98,7 @@ class Table
         $arr = call_user_func_array([$this->adapter, 'query'], func_get_args());
         $count = count($arr);
         if (1 < $count) {
+            return $arr;
             print_r(["count $count", $arr, __FILE__, __LINE__]);
             exit;
         }
