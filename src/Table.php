@@ -245,10 +245,11 @@ class Table
     +---------------------------------------
     */
 
-    public function count($where = null, $column_name = 0)
+    public function count($where = null, $column_name = null)
     {
+        $column = null === $column_name ? ($this->primary_key ? : 0) : $column_name;
         $db_table = $this->from();
-        $sql = "SELECT COUNT($column_name) AS num FROM $db_table";
+        $sql = "SELECT COUNT($column) AS num FROM $db_table";
         $where = $this->sqlWhere($where);
         if ($where) {
             $sql .= " WHERE $where";
