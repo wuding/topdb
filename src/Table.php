@@ -96,6 +96,9 @@ class Table
     public function query()
     {
         $arr = call_user_func_array([$this->adapter, 'query'], func_get_args());
+        if (!is_array($arr)) {
+            return $arr;
+        }
         $count = count($arr);
         if (1 < $count) {
             return $arr;
