@@ -102,8 +102,6 @@ class Table
         $count = count($arr);
         if (1 < $count) {
             return $arr;
-            print_r(["count $count", $arr, __FILE__, __LINE__]);
-            exit;
         }
         return array_shift($arr);
     }
@@ -139,11 +137,15 @@ class Table
                 $arr[] = $value;
             } elseif ($key) {
                 $val = 'NULL';
-                if (null !== $value) {
+                if (is_array($value)) {
+                    $val = implode('', $value);
+                } elseif (is_numeric($value)) {
+                    $val = $value;
+                } elseif (null !== $value) {
                     $value = addslashes($value);
                     $val = "'$value'";
                 }
-                $arr[]= "`$key` = $val";
+                $arr[] = "`$key` = $val";
             }
         }
         return $str = implode(", ", $arr);
@@ -204,7 +206,7 @@ class Table
         }
         $sql .= $condition;
 
-        $arr = array($this->exec($sql));
+        $arr = array('exec' => $this->exec($sql));
         $exec = $this->logs($sql, $call ?: 'update', $arr) ?: $arr;
         return $exec;
     }
@@ -273,7 +275,7 @@ class Table
             if (in_array($type, $this->return)) {
                 $this->logs[] = $sql;
                 if (is_array($arr)) {
-                    $arr[] = $sql;
+                    $arr['sql'] = $sql;
                     return $arr;
                 }
             }
