@@ -237,7 +237,7 @@ class Table
         return $this->logs($sql, $call ? : 'get') ? : $this->adapter->get($sql);
     }
 
-    public function find()
+    public function find($id)
     {
         return call_user_func_array([$this, 'get'], func_get_args());
     }
