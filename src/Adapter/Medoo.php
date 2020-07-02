@@ -2,7 +2,7 @@
 
 namespace Topdb\Adapter;
 
-use Medoo\Medoo;
+use Medoo\Medoo as Medo;
 
 class Medoo extends _Abstract
 {
@@ -18,7 +18,7 @@ class Medoo extends _Abstract
     public function __construct($config, $options)
     {
         $config = $this->setConfig($config, $options);
-        $this->database = new Medoo($config);
+        $this->database = new Medo($config);
     }
 
     public function setConfig($config, $options)
