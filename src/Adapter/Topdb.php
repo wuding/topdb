@@ -48,7 +48,7 @@ class Topdb extends _Abstract
     {
         $conf = array_merge($this->config, $config);
         $opt = array_merge($conf, $options);
-        $arr = $this->array_keys_clean($opt);
+        $arr = $this->keys_clean ? $this->array_keys_clean($opt) : $opt;
         return $arr;
     }
 

@@ -12,7 +12,7 @@ class _Abstract
     +---------------------------------------
     */
 
-	public function setVars($data = [])
+    public function setVars($data = [])
     {
         foreach ($data as $key => $value) {
             $this->$key = $value;

@@ -26,7 +26,7 @@ class Table
 
     public function __construct($config = [], $name = null)
     {
-        $this->inst();
+        $this->inst($config);
     }
 
     public function __call($name, $arguments)
@@ -48,11 +48,12 @@ class Table
         return $vars;
     }
 
-    public function inst()
+    public function inst($config = [])
     {
-        $options = array(
+        $option = array(
             'dbname' => $this->db_name,
         );
+        $options = array_merge($config, $option);
         $this->initAdapter($options);
     }
 
