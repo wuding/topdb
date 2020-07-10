@@ -27,6 +27,7 @@ class Topdb extends _Abstract
     public $ignore_values = [];
     public $ignore_fields = [];
     public $fields = '';
+    public $keys_clean = null;
 
     /*
     +---------------------------------------
