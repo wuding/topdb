@@ -17,6 +17,10 @@ class Table
 
     public $return = null;
     public $logs = [];
+    public $join = null;
+    public $group_by = null;
+    public $having = null;
+    public $exist_fields = [];
 
     /*
     +---------------------------------------
@@ -174,6 +178,8 @@ class Table
             } elseif (is_array($value)) {
                 print_r([$value, __FILE__, __LINE__]);
                 exit;
+            } elseif (null === $value) {
+                $arr[] = "`$key` IS NULL";
             } else {
                 $value = addslashes($value);
                 $arr[] = "`$key` = '$value'";
@@ -212,6 +218,40 @@ class Table
         return $exec;
     }
 
+    public function select($where = null, $column = '*', $order = null, $limit = 10, $offset = null)
+    {
+        $column = $column ?: '*';
+        $db_table = $this->from();
+        $sql = "SELECT $column FROM $db_table";
+        if ($this->join) {
+            $sql .= " $this->join";
+        }
+
+        $where = $this->sqlWhere($where);
+        if ($where) {
+            $sql .= " WHERE $where";
+        }
+
+        if ($this->group_by) {
+            $sql .= " GROUP BY $this->group_by";
+            if ($this->having) {
+                $sql .= " HAVING $this->having";
+            }
+        }
+
+        if ($order) {
+            $sql .= " ORDER BY $order";
+        }
+        if ($limit) {
+            $sql .= " LIMIT $limit";
+        }
+        if (null !== $offset) {
+            $sql .= " OFFSET $offset";
+        }
+        $arr = $this->adapter->select($sql);
+        return $this->logs($sql, 'select', $arr) ?: $arr;
+    }
+
     /*
     +---------------------------------------
     + 批量或其他
@@ -243,6 +283,48 @@ class Table
     public function find($id)
     {
         return call_user_func_array([$this, 'get'], func_get_args());
+    }
+
+    public function into($field = null, $value = null)
+    {
+        $db_table = $this->from();
+
+        if (is_string($field)) {
+            $field = explode(',', $field);
+        }
+        if (is_array($value) && $value) {
+
+        } else {
+            $value = [[]];
+        }
+
+        $count = count($field);
+        $field = implode('`, `', $field);
+        $field = '(`' . $field . '`)';
+
+        $values = [];
+        foreach ($value as $row) {
+            $arr = [];
+            for ($i = 0; $i < $count; $i++) {
+                $val = isset($row[$i]) ? $row[$i] : null;
+                if (null != $val) {
+                    $val = addslashes($val);
+                    $val = "'$val'";
+                } else {
+                    $val = 'NULL';
+                }
+                $arr []= $val;
+            }
+            $data = implode(', ', $arr);
+            $data = '(' . $data . ')';
+            $values []= $data;
+        }
+        $values = implode(', ', $values);
+
+        $sql = "INSERT INTO $db_table $field VALUES ";
+        $sql .= $values;
+        $arr = $this->db->insert($sql);
+        return $this->logs($sql, 'into', $arr) ?: $arr;
     }
 
     /*
