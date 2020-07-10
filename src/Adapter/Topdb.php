@@ -17,11 +17,12 @@ class Topdb extends _Abstract
 
     public $ignore_types = [];
     public $ignore_null = [
-        'string' => true,
+        'string' => null,
         'array' => null,
         'object' => null,
         'integer' => null,
         'double' => null,
+        'NULL' => null,
     ];
     public $ignore_values = [];
     public $ignore_fields = [];
@@ -120,11 +121,9 @@ class Topdb extends _Abstract
                 $quote = 0;
                 $value = intval($value);
 
-            } elseif ('null' == $type) {
+            } elseif ('NULL' == $type) {
                 $quote = 0;
-                $value = (string) $value;
-                print_r(["value is $value", $value, __FILE__, __LINE__]);
-                exit;
+                $value = $type;
 
             } else {
                 print_r(["type is $type", $value, __FILE__, __LINE__]);
