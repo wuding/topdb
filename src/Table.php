@@ -2,6 +2,8 @@
 
 namespace Topdb;
 
+use Ext\Yac;
+
 class Table
 {
     public $adapter = null;
@@ -21,6 +23,7 @@ class Table
     public $group_by = null;
     public $having = null;
     public $exist_fields = [];
+    public $null = null;
 
     /*
     +---------------------------------------
@@ -40,9 +43,12 @@ class Table
 
     public function getVars()
     {
-        $variable = ['table_name', 'fields', 'dbname' => 'db_name'];
+        $variable = ['table_name', 'fields', 'dbname' => 'db_name', 'port'];
         $vars = [];
         foreach ($variable as $key => $value) {
+            if (!isset($this->$value)) {
+                continue 1;
+            }
             if (is_numeric($key)) {
                 $vars[$value] = $this->$value;
             } else {
@@ -68,10 +74,13 @@ class Table
         $names = self::$names;
         if (array_key_exists($name, $names)) {
             $vars = $this->getVars();
+            foreach ($vars as $key => $value) {
+                $config[$key] = $value;
+            }
             $file = $names[$name];
             $class = "\\Topdb\\Adapter\\$file";
             $this->adapter = new $class($config, $options);
-            $this->adapter->setVars($vars);
+            #$this->adapter->setVars($vars);
             $this->db = $this->adapter->database;
         }
     }
@@ -137,11 +146,22 @@ class Table
         }
 
         $arr = [];
+        $haystack = $this->null ?? [];
         foreach ($data as $key => $value) {
             if (is_numeric($key)) {
                 $arr[] = $value;
             } elseif ($key) {
                 $val = 'NULL';
+                // 等同 null
+                if (in_array($value, $haystack, true)) {
+                    foreach ($haystack as $k => $v) {
+                        if ($value === $v) {
+                            $value = null;
+                            break;
+                        }
+                    }
+                }
+                // 分类型生成
                 if (is_array($value)) {
                     $val = implode('', $value);
                 } elseif (is_numeric($value)) {
@@ -178,6 +198,8 @@ class Table
             } elseif (is_array($value)) {
                 print_r([$value, __FILE__, __LINE__]);
                 exit;
+            } elseif (is_numeric($value)) {
+                $arr[] = "`$key` = $value";
             } elseif (null === $value) {
                 $arr[] = "`$key` IS NULL";
             } else {
@@ -333,7 +355,7 @@ class Table
     +---------------------------------------
     */
 
-    public function count($where = null, $column_name = null)
+    public function count($where = null, $column_name = null, $cache = null)
     {
         $column = null === $column_name ? ($this->primary_key ? : 0) : $column_name;
         $db_table = $this->from();
@@ -342,8 +364,25 @@ class Table
         if ($where) {
             $sql .= " WHERE $where";
         }
+        if ($cache) {
+            $md5 = md5($sql);
+            $cacheKey = "count_$md5";
+            $count = Yac::get($cacheKey);
+            if (false !== $count) {
+                return $count;
+            }
+        }
         $row = $this->logs($sql, 'count') ? : $this->adapter->get($sql);
-        return $num = $row ? (is_object($row) ? $row->num : $row) : $row;
+        $num = is_object($row) ? $row->num : $row;
+        if ($cache && is_numeric($num)) {
+            $stored = Yac::set($cacheKey, $num);
+            if (!$stored) {
+                var_dump($stored);
+                print_r([$cacheKey, $num, __FILE__, __LINE__]);
+                exit;
+            }
+        }
+        return $num;
     }
 
     /*
