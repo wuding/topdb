@@ -365,22 +365,15 @@ class Table
             $sql .= " WHERE $where";
         }
         if ($cache) {
-            $md5 = md5($sql);
-            $cacheKey = "count_$md5";
-            $count = Yac::get($cacheKey);
-            if (false !== $count) {
-                return $count;
+            extract(Yac::hash($sql, 'count_'));
+            if (false !== $cacheValue) {
+                return $cacheValue;
             }
         }
         $row = $this->logs($sql, 'count') ? : $this->adapter->get($sql);
         $num = is_object($row) ? $row->num : $row;
         if ($cache && is_numeric($num)) {
-            $stored = Yac::set($cacheKey, $num);
-            if (!$stored) {
-                var_dump($stored);
-                print_r([$cacheKey, $num, __FILE__, __LINE__]);
-                exit;
-            }
+            $stored = Yac::store($cacheKey, $num, $cache);
         }
         return $num;
     }
