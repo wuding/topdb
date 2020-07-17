@@ -1,7 +1,8 @@
 {
     "name": "wuding/topdb",
     "require": {
-        "php": ">=5.4.0"
+        "php": ">=5.4.0",
+        "wuding/php-ext": "^20.200.3"
     },
     "autoload": {
         "psr-4": {
