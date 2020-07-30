@@ -6,6 +6,7 @@ use Ext\Yac;
 
 class Table
 {
+    const VERSION = '20.213.103';
     public $adapter = null;
     public $fields = '';
     public static $data = array(
