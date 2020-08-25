@@ -275,6 +275,11 @@ class Table
         return $this->logs($sql, 'select', $arr) ?: $arr;
     }
 
+    public function queryAll($sql)
+    {
+        return $arr = $this->query($sql, \PDO::FETCH_OBJ);
+    }
+
     /*
     +---------------------------------------
     + 批量或其他
