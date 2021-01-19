@@ -72,7 +72,7 @@ class Tbl
     public function conf($vars = null)
     {
         $vars = null === $vars ? array() : $vars;
-        $conf = Glob::cnf($this->db_connect, 'database');
+        $conf = Glob::cnf($this->db_connect, 'database') ?? array();
         $conf = array_merge($conf, $vars);
         $type = ($conf['db_type'] ?? null) ?: 'mysql';
         $data = $this->data[$type] ?: array();
