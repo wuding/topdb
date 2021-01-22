@@ -133,9 +133,42 @@ class Tbl
         return $str = implode(".", $pieces);
     }
 
+    // 通过带键名的数组合成完整语句
+    public static function sqlPieces($variable = array())
+    {
+        $arr = array();
+        foreach ($variable as $key => $value) {
+            if ($value) {
+                $arr[] = "$key $value";
+            }
+        }
+        return $sql = implode(PHP_EOL, $arr);
+    }
+
+    // 多行查询的语句
+    public function selectSql($column = null, $where = null, $order = null, $limit = null)
+    {
+        //=z
+        $column = self::columnName($column);
+
+        //=sh
+        $table = self::dbTable();
+
+        //=f
+        $pieces = array(
+            'SELECT' => $column,
+            'FROM' => $table,
+            'WHERE' => $where,
+            'ORDER BY' => $order,
+            'LIMIT' => $limit,
+        );
+        return $sql = self::sqlPieces($pieces);
+    }
+
     /*
     CRUD
     */
+    // 单行查询
     public function get($column = null, $where = null, $order = null)
     {
         $column = self::columnName($column);
@@ -151,23 +184,16 @@ class Tbl
         $sql = implode(' ', $pieces);
 
         // 查询
-        $row = static::object($sql);
+        $row = self::object($sql);
         return $row;
     }
 
-    public function select($column = null, $where = null, $order = null, $limit = null)
+    // 多行查询
+    public function select()
     {
-        $column = self::columnName($column);
-        $table = self::dbTable();
-
-        $pieces = array();
-        $pieces[] = "SELECT $column";
-        $pieces[] = "FROM $table";
-        $pieces[] = "ORDER BY $order";
-        $pieces[] = "LIMIT $limit";
-        $sql = implode(' ', $pieces);
-
-        $all = static::all($sql);
+        $param_arr = func_get_args();
+        $sql = call_user_func_array(array($this, 'selectSql'), $param_arr);
+        $all = self::all($sql);
         return $all;
     }
 
@@ -234,6 +260,43 @@ class Tbl
         $sql = "UPDATE $table SET $str WHERE $wh";
         $row = self::exec($sql);
         return $row;
+    }
+
+    /*
+    内存缓存
+    */
+    // 从内存读写多行查询
+    public function memSelect()
+    {
+        //=s
+        $param_arr = func_get_args();
+
+        //=f
+        $ttl = 86400;
+        if (isset($param_arr[4])) {
+            $ttl = $param_arr[4];
+            unset($param_arr[4]);
+        }
+
+        //=z
+        $sql = call_user_func_array(array($this, 'selectSql'), $param_arr);
+        $md5 = md5($sql);
+        $key = "SQL_SELECT:$md5";
+
+        //=sh
+        $val = Glob::$obj['Redis']->getJSON($key);
+
+        //=l
+        if (false !== $val) {
+            return $val;
+        }
+
+        //=j
+        $all = self::all($sql);
+        $set = Glob::$obj['Redis']->setJSON($key, $all, $ttl);
+
+        //=g
+        return $all;
     }
 
     /*
