@@ -171,17 +171,8 @@ class Tbl
     // 单行查询
     public function get($column = null, $where = null, $order = null)
     {
-        $column = self::columnName($column);
-        $table = self::dbTable();
-
         // 拼接 SQL
-        $pieces = array();
-        $pieces[] = "SELECT $column";
-        $pieces[] = "FROM $table";
-        $pieces[] = "WHERE $where";
-        $pieces[] = "ORDER BY $order";
-        $pieces[] = "LIMIT 1";
-        $sql = implode(' ', $pieces);
+        $sql = self::selectSql($column, $where, $order, 1);
 
         // 查询
         $row = self::object($sql);
@@ -247,6 +238,12 @@ class Tbl
         $table = self::dbTable();
         $pieces = array();
         foreach ($variable as $key => $value) {
+            // 空值
+            if (null === $value) {
+                $pieces[] = "`$key` = NULL";
+                continue 1;
+            }
+            // 字符串
             $value = addslashes($value);
             $pieces[] = "`$key` = '$value'";
         }
@@ -283,8 +280,15 @@ class Tbl
         $md5 = md5($sql);
         $key = "SQL_SELECT:$md5";
 
+        //=l
+        // 负值即删除
+        if (0 > $ttl) {
+            $del = Glob::$mem->del($key);
+            return $del;
+        }
+
         //=sh
-        $val = Glob::$obj['Redis']->getJSON($key);
+        $val = Glob::$mem->getJSON($key);
 
         //=l
         if (false !== $val) {
@@ -293,7 +297,7 @@ class Tbl
 
         //=j
         $all = self::all($sql);
-        $set = Glob::$obj['Redis']->setJSON($key, $all, $ttl);
+        $set = Glob::$mem->setJSON($key, $all, $ttl);
 
         //=g
         return $all;
