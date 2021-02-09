@@ -270,7 +270,7 @@ class Tbl
 
         //=f
         $ttl = 86400;
-        if (isset($param_arr[4])) {
+        if (array_key_exists(4, $param_arr)) {
             $ttl = $param_arr[4];
             unset($param_arr[4]);
         }
