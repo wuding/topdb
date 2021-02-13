@@ -133,6 +133,63 @@ class Tbl
         return $str = implode(".", $pieces);
     }
 
+    public function sqlSet($data)
+    {
+        $pieces = [];
+        foreach ($data as $key => $value) {
+            if (is_numeric($key)) {
+                $pieces[] = $value;
+                continue 1;
+            }
+            $val = is_numeric($value) ? $value : "'". addslashes($value) ."'";
+            if (null === $value) {
+                continue 1;
+                $val = is_null($value) ? 'NULL' : $val;
+            }
+            $pieces[] = "`$key` = $val";
+        }
+        return $str = implode(','. PHP_EOL, $pieces);
+        print_r($str);
+    }
+
+    public function sqlWhere($data)
+    {
+        if (!is_array($data)) {
+            $str = is_numeric($data) ? "`$this->primary_key` = $data" : $data;
+            return $str;
+        }
+
+        $pieces = [];
+        foreach ($data as $key => $value) {
+            if (is_numeric($key)) {
+                $pieces[] = $value;
+                continue 1;
+            }
+            $val = is_numeric($value) ? $value : "'". addslashes($value) ."'";
+            $pieces[] = "`$key` = $val";
+        }
+        return $str = implode(' AND '. PHP_EOL, $pieces);
+    }
+
+    public function sqlOrder($data)
+    {
+        if (!is_array($data)) {
+            return $data;
+        }
+
+        $pieces = array();
+        foreach ($data as $key => $value) {
+            if (is_numeric($key)) {
+                $pieces[] = $value;
+            } elseif (is_array($value)) {
+
+            } else {
+                $pieces[] = "$key $value";
+            }
+        }
+        return $sql = implode(', ', $pieces);
+    }
+
     // 通过带键名的数组合成完整语句
     public static function sqlPieces($variable = array())
     {
@@ -158,8 +215,8 @@ class Tbl
         $pieces = array(
             'SELECT' => $column,
             'FROM' => $table,
-            'WHERE' => $where,
-            'ORDER BY' => $order,
+            'WHERE' => $this->sqlWhere($where),
+            'ORDER BY' => $this->sqlOrder($order),
             'LIMIT' => $limit,
         );
         return $sql = self::sqlPieces($pieces);
@@ -188,7 +245,8 @@ class Tbl
         return $all;
     }
 
-    public function sqlSelect($column = null, $where = null, $order = null, $limit = null, $join = null)
+    // 待删
+    public function sqlSelect0($column = null, $where = null, $order = null, $limit = null, $join = null)
     {
         $column = self::columnName($column);
         $table = self::dbTable();
