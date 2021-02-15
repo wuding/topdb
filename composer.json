@@ -2,8 +2,8 @@
     "name": "wuding/topdb",
     "require": {
         "php": ">=7.0.0",
-        "wuding/php-ext": "^21.1.19",
-        "wuding/php-pkg": "^21.1.19"
+        "wuding/php-ext": "^21.2.16",
+        "wuding/php-pkg": "^21.2.16"
     },
     "autoload": {
         "psr-4": {
