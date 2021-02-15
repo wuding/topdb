@@ -7,6 +7,8 @@ use Pkg\Glob;
 
 class Tbl
 {
+    const VERSION = '21.2.16';
+
     // 配置
     public static $vars = null;
     public $config_item = null;
@@ -21,17 +23,38 @@ class Tbl
             'port' => 3306,
         ),
     );
+    public $mem = 'Mem';
 
     // 运行时
     public static $connects = array();
+    public static $memories = array();
     public $key = null;
+    public $memory_key = null;
 
-    public function __construct($vars = null)
+    public function __construct($vars = null, $prop = null, $conf = null, $connect = null)
     {
-        if (null !== $vars) {
-            self::$vars = $vars;
+        $mem = null;
+        // 遍历设置属性
+        if (is_array($prop)) {
+            foreach ($prop as $key => $value) {
+                $this->$key = $value;
+            }
+        } elseif (is_string($prop) || is_object($prop)) { // 仅设置内存缓存
+            $mem = $prop;
         }
-        $this->connect($vars);
+
+        // 导入配置
+        $db = $conf['Db'] ?? array();
+        $item = $conf[$this->config_item] ?? array();
+        $variable = array_merge($db, $item);
+        // 合并属性
+        foreach ($variable as $key => $value) {
+            $val = $this->$key;
+            if (!$val) {
+                $this->$key = $value;
+            }
+        }
+        $this->init($vars, $mem, $connect);
     }
 
     public function __call($name, $arguments)
@@ -46,8 +69,40 @@ class Tbl
         return call_user_func_array(array($obj, $name), $arguments);
     }
 
+    // 初始化数据库连接参数、内存缓存类对象
+    public function init($vars = null, $mem = null, $connect = null)
+    {
+        // 设置属性，作为缺省连接参数
+        if (null !== $vars) {
+            static::$vars = $vars;
+        }
+
+        // 保证内存缓存可用
+        if (!static::$memories && null === $mem) {
+            $mem = $this->mem;
+            if (!is_string($mem)) {
+                $this->mem = null;
+            }
+        }
+        // 设置指针和键值对
+        if (null !== $mem) {
+            if (is_string($mem)) {
+                static::$memories[$mem] = $this->memory_key = $mem;
+            } else {
+                $this->memory_key = $key = time();
+                static::$memories[$key] = $mem;
+            }
+        }
+
+        // 连接
+        if (false !== $connect) {
+            return $this->connect();
+        }
+    }
+
     public function connect($vars = null)
     {
+        $vars = null === $vars ? static::$vars : $vars;
         $conf = $this->conf($vars);
         $dsn = $this->dsn($conf);
         $username = $conf['username'] ?? null;
@@ -103,6 +158,19 @@ class Tbl
         $str = implode(';', $pieces);
         $dsn = "$prefix:$str";
         return $dsn;
+    }
+
+    /*
+    内存缓存
+    */
+    public function mem($key = null)
+    {
+        $key = $key ?: $this->memory_key;
+        $mem = self::$memories[$key] ?? null;
+        if (is_string($mem)) {
+            return Glob::get($mem);
+        }
+        return $mem;
     }
 
     /*
@@ -341,12 +409,12 @@ class Tbl
         //=l
         // 负值即删除
         if (0 > $ttl) {
-            $del = Glob::$mem->del($key);
+            $del = $this->mem()->del($key);
             return $del;
         }
 
         //=sh
-        $val = Glob::$mem->getJSON($key);
+        $val = $this->mem()->getJSON($key);
 
         //=l
         if (false !== $val) {
@@ -355,7 +423,7 @@ class Tbl
 
         //=j
         $all = self::all($sql);
-        $set = Glob::$mem->setJSON($key, $all, $ttl);
+        $set = $this->mem()->setJSON($key, $all, $ttl);
 
         //=g
         return $all;
