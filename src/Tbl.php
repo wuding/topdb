@@ -11,6 +11,7 @@ class Tbl
 
     // 配置
     public static $vars = null;
+    public $config_file = null;
     public $config_item = null;
     public $db_connect = null;
     public $db_name = null;
@@ -176,10 +177,62 @@ class Tbl
     /*
     拼接
     */
-    public static function columnName($variable = null)
+    public function columnName($variable = null)
     {
         if (is_object($variable)) {
-            $column = $variable->scalar;
+            // 字符串转来的对象
+            $scalar = $variable->scalar ?? null;
+            if ($scalar) {
+                $arr = explode(',', $scalar);
+            } else { // 还原数组
+                $arr = (array) $variable;
+            }
+
+            // 遍历列
+            foreach ($arr as $key => &$value) {
+                $index = is_numeric($key) ? null : "$key.";
+                // 共同表前缀
+                if (is_array($value)) {
+                    foreach ($value as $val) {
+                        unset($arr[$key]);
+                        $val = trim($val);
+                        $arr[] = "$index$val";
+                    }
+                    continue 1;
+                } elseif (is_string($value)) {
+                    $value = trim($value);
+                    if ($index) {
+                        $arr[] = "$index$value";
+                        unset($arr[$key]);
+                        continue 1;
+                    }
+                } else {
+                    var_dump($value);
+                    print_r(array(__FILE__, __LINE__, get_defined_vars()));
+                    exit;
+                }
+
+                // 分割库表列与别名
+                $alias = preg_split("/\s+AS\s+|\s+/i", $value);
+                $count = count($alias);
+                $pieces = array();
+                $nm = null;
+                // 有别名
+                if (1 < $count) {
+                    list($value, $nm) = $alias;
+                }
+                // 库表列
+                $names = preg_split("/\.+/i", $value);
+                foreach ($names as $name) {
+                    $pieces[] = "`$name`";
+                }
+                $value = implode('.', $pieces);
+                // 拼接别名
+                if ($nm) {
+                    $value .= " AS `$nm`";
+                }
+            }
+            $column = implode(', ', $arr);
         } elseif (is_array($variable)) {
             $pieces = array();
             foreach ($variable as $key => $value) {
@@ -220,10 +273,13 @@ class Tbl
         print_r($str);
     }
 
-    public function sqlWhere($data)
+    public function sqlWhere($data, $alias = null)
     {
+        if ($alias) {
+            $alias .= '.';
+        }
         if (!is_array($data)) {
-            $str = is_numeric($data) ? "`$this->primary_key` = $data" : $data;
+            $str = is_numeric($data) ? "$alias`$this->primary_key` = $data" : $data;
             return $str;
         }
 
@@ -271,19 +327,28 @@ class Tbl
     }
 
     // 多行查询的语句
-    public function selectSql($column = null, $where = null, $order = null, $limit = null)
+    public function selectSql($column = null, $where = null, $order = null, $limit = null, $options = array())
     {
+        //=f
+        $alias = $left_join = null;
         //=z
         $column = self::columnName($column);
 
         //=sh
         $table = self::dbTable();
+        extract($options);
+
+        //=l
+        if ($alias) {
+            $table .= " $alias";
+        }
 
         //=f
         $pieces = array(
             'SELECT' => $column,
             'FROM' => $table,
-            'WHERE' => $this->sqlWhere($where),
+            'LEFT JOIN' => $left_join,
+            'WHERE' => $this->sqlWhere($where, $alias),
             'ORDER BY' => $this->sqlOrder($order),
             'LIMIT' => $limit,
         );
@@ -294,10 +359,10 @@ class Tbl
     CRUD
     */
     // 单行查询
-    public function get($column = null, $where = null, $order = null)
+    public function get($column = null, $where = null, $order = null, $options = array())
     {
         // 拼接 SQL
-        $sql = self::selectSql($column, $where, $order, 1);
+        $sql = self::selectSql($column, $where, $order, 1, $options);
 
         // 查询
         $row = self::object($sql);
@@ -400,6 +465,7 @@ class Tbl
             $ttl = $param_arr[4];
             unset($param_arr[4]);
         }
+        // 计划：已作为额外选项了 options[ttl]
 
         //=z
         $sql = call_user_func_array(array($this, 'selectSql'), $param_arr);
