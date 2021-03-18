@@ -13,6 +13,7 @@ class Tbl
     public static $vars = null;
     public $config_file = null;
     public $config_item = null;
+    public $config_db = 'Db';
     public $db_connect = null;
     public $db_name = null;
     public $table_name = null;
@@ -45,7 +46,7 @@ class Tbl
         }
 
         // 导入配置
-        $db = $conf['Db'] ?? array();
+        $db = $conf[$this->config_db] ?? array();
         $item = $conf[$this->config_item] ?? array();
         $variable = array_merge($db, $item);
         // 合并属性
@@ -79,7 +80,7 @@ class Tbl
         }
 
         // 保证内存缓存可用
-        if (!static::$memories && null === $mem) {
+        if (!$this->memory_key && null === $mem) {
             $mem = $this->mem;
             if (!is_string($mem)) {
                 $this->mem = null;
@@ -90,6 +91,7 @@ class Tbl
             if (is_string($mem)) {
                 static::$memories[$mem] = $this->memory_key = $mem;
             } else {
+                // 计划：改为毫秒
                 $this->memory_key = $key = time();
                 static::$memories[$key] = $mem;
             }
@@ -336,7 +338,9 @@ class Tbl
 
         //=sh
         $table = self::dbTable();
-        extract($options);
+        if (is_array($options)) {
+            extract($options);
+        }
 
         //=l
         if ($alias) {
@@ -493,6 +497,59 @@ class Tbl
 
         //=g
         return $all;
+    }
+
+    // 从内存读写单行查询
+    public function memGet($column = null, $where = null, $order = null, $options = array())
+    {
+        //=f
+        $ttl = 86400;
+        $ns = 'SQL_GET';
+        if (is_array($options)) {
+            if (array_key_exists('ttl', $options)) {
+                $ttl = $options['ttl'];
+                unset($options['ttl']);
+            }
+            if (array_key_exists('ns', $options)) {
+                $ns = $options['ns'];
+                unset($options['ns']);
+            }
+        } else {
+            $ttl = $options;
+            $options = array();
+        }
+
+        //=z
+        $sql = call_user_func_array(array($this, 'selectSql'), array($column, $where, $order, 1, $options));
+        $md5 = md5($sql);
+        $key = "$ns:$md5";
+
+        //=l
+        // 不缓存
+        if (false === $ttl) {
+            return $row = self::object($sql);
+        }
+        // 负值即删除
+        if (0 > $ttl) {
+            $del = $this->mem()->del($key);
+            return $del;
+        }
+
+        //=sh
+        $val = $this->mem()->getJSON($key);
+
+        //=l
+        if (false !== $val) {
+            return $val;
+        }
+
+        //=j
+        // 计划：call
+        $row = self::object($sql);
+        $set = $this->mem()->setJSON($key, $row, $ttl);
+
+        //=g
+        return $row;
     }
 
     /*
