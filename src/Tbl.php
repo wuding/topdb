@@ -465,18 +465,34 @@ class Tbl
 
         //=f
         $ttl = 86400;
+        $ns = 'SQL_SELECT';
         if (array_key_exists(4, $param_arr)) {
-            $ttl = $param_arr[4];
-            unset($param_arr[4]);
+            $options = $param_arr[4];
+            if (is_array($options)) {
+                if (array_key_exists('ttl', $options)) {
+                    $ttl = $options['ttl'];
+                    unset($options['ttl']);
+                }
+                if (array_key_exists('ns', $options)) {
+                    $ns = $options['ns'];
+                    unset($options['ns']);
+                }
+            } else {
+                $ttl = $options;
+                unset($param_arr[4]);
+            }
         }
-        // 计划：已作为额外选项了 options[ttl]
 
         //=z
         $sql = call_user_func_array(array($this, 'selectSql'), $param_arr);
         $md5 = md5($sql);
-        $key = "SQL_SELECT:$md5";
+        $key = "$ns:$md5";
 
         //=l
+        // 不缓存
+        if (false === $ttl) {
+            return $all = self::all($sql);
+        }
         // 负值即删除
         if (0 > $ttl) {
             $del = $this->mem()->del($key);
@@ -484,10 +500,11 @@ class Tbl
         }
 
         //=sh
-        $val = $this->mem()->getJSON($key);
+        $val = $this->mem()->getJSON($key, '__FALSE__');
 
         //=l
-        if (false !== $val) {
+        // 错误：可能缓存的值就是 false
+        if ('__FALSE__' !== $val) {
             return $val;
         }
 
@@ -536,10 +553,10 @@ class Tbl
         }
 
         //=sh
-        $val = $this->mem()->getJSON($key);
+        $val = $this->mem()->getJSON($key, '__FALSE__');
 
         //=l
-        if (false !== $val) {
+        if ('__FALSE__' !== $val) {
             return $val;
         }
 
