@@ -297,6 +297,16 @@ class Tbl
         return $str = implode(' AND '. PHP_EOL, $pieces);
     }
 
+    public function sqlGroup()
+    {
+
+    }
+
+    public function sqlHaving()
+    {
+
+    }
+
     public function sqlOrder($data)
     {
         if (!is_array($data)) {
@@ -316,6 +326,31 @@ class Tbl
         return $sql = implode(', ', $pieces);
     }
 
+    public function sqlLimit($variable)
+    {
+        if (!$variable) {
+            return;
+        }
+
+        if (!is_array($variable)) {
+            // 计划：修剪
+            return $variable;
+        }
+
+        $pieces = $var_array = array();
+        foreach ($variable as $key => $value) {
+            if (is_numeric($key)) {
+                $pieces[] = $value;
+            } else {
+                // 计划：使用键名
+                $var_array[$key] = $value;
+            }
+        }
+
+        // 计划：限制 2 个
+        return $str = implode(', ', $pieces);
+    }
+
     // 通过带键名的数组合成完整语句
     public static function sqlPieces($variable = array())
     {
@@ -329,6 +364,7 @@ class Tbl
     }
 
     // 多行查询的语句
+    // 计划：增加 GROUP BY 等支持，支持多个连接
     public function selectSql($column = null, $where = null, $order = null, $limit = null, $options = array())
     {
         //=f
@@ -354,7 +390,28 @@ class Tbl
             'LEFT JOIN' => $left_join,
             'WHERE' => $this->sqlWhere($where, $alias),
             'ORDER BY' => $this->sqlOrder($order),
-            'LIMIT' => $limit,
+            'LIMIT' => $this->sqlLimit($limit),
+        );
+        return $sql = self::sqlPieces($pieces);
+    }
+
+    public function sqlInsert()
+    {
+
+    }
+
+    public function sqlUpdate()
+    {
+
+    }
+
+    public function sqlDelete($column = null, $where = null)
+    {
+        $table = self::dbTable();
+        $pieces = array(
+            'DELETE' => $column ?: ' ',
+            'FROM' => $table,
+            'WHERE' => $this->sqlWhere($where),
         );
         return $sql = self::sqlPieces($pieces);
     }
@@ -365,11 +422,27 @@ class Tbl
     // 单行查询
     public function get($column = null, $where = null, $order = null, $options = array())
     {
+        //=f
+        $direct = null;
+
+        //=z
+        if (is_string($column)) {
+            $column = trim($column);
+            // 字符串单列直接返回
+            if ($column && '*' !== $column) {
+                $pos = strpos($column, ',');
+                $direct = false === $pos;
+            }
+        }
+
         // 拼接 SQL
         $sql = self::selectSql($column, $where, $order, 1, $options);
 
         // 查询
         $row = self::object($sql);
+        if ($row && true === $direct) {
+            $row = $row->$column ?? true;
+        }
         return $row;
     }
 
@@ -382,7 +455,7 @@ class Tbl
         return $all;
     }
 
-    // 待删
+    // 计划：待删
     public function sqlSelect0($column = null, $where = null, $order = null, $limit = null, $join = null)
     {
         $column = self::columnName($column);
@@ -414,6 +487,7 @@ class Tbl
         return $sql = implode(PHP_EOL, $pieces);
     }
 
+    // 计划：使用拼接方法，区分（批量）插入方法
     public function into($variable)
     {
         $table = self::dbTable();
@@ -428,6 +502,20 @@ class Tbl
         return self::lastInsertId();
     }
 
+    // 插入单行、批量插入
+    public function insert($data, $fields = null)
+    {
+        $table = self::dbTable();
+        $pieces = array(
+            'INSERT INTO' => $table,
+            'SET' => $this->sqlSet($data),
+        );
+        $sql = self::sqlPieces($pieces);
+        $row = self::exec($sql);
+        return self::lastInsertId();
+    }
+
+    // 计划：使用拼接方法
     public function update($variable, $where)
     {
         $table = self::dbTable();
@@ -452,6 +540,26 @@ class Tbl
         $sql = "UPDATE $table SET $str WHERE $wh";
         $row = self::exec($sql);
         return $row;
+    }
+
+    public function delete($where = null, $column = null)
+    {
+        $sql = $this->sqlDelete($column, $where);
+        $del = self::exec($sql);
+        return $del;
+    }
+
+    /*
+    补充
+    */
+    public function has()
+    {
+
+    }
+
+    public function exist()
+    {
+
     }
 
     /*
@@ -574,6 +682,7 @@ class Tbl
     */
     public function max()
     {
+        // 计划：列名作为参数
         $column = $this->primary_key;
         $table = $this->dbTable();
         $pieces = array();
@@ -582,5 +691,10 @@ class Tbl
         $sql = implode(' ', $pieces);
         $row = self::object($sql);
         return $row->num;
+    }
+
+    public function count()
+    {
+
     }
 }
