@@ -369,6 +369,7 @@ class Tbl
     {
         //=f
         $alias = $left_join = null;
+        $offset = 0;
         //=z
         $column = self::columnName($column);
 
@@ -391,6 +392,7 @@ class Tbl
             'WHERE' => $this->sqlWhere($where, $alias),
             'ORDER BY' => $this->sqlOrder($order),
             'LIMIT' => $this->sqlLimit($limit),
+            'OFFSET' => $offset,
         );
         return $sql = self::sqlPieces($pieces);
     }
