@@ -538,7 +538,7 @@ class Tbl
             $value = addslashes($value);
             $pieces[] = "`$key` = '$value'";
         }
-        $wh = implode(', ', $pieces);
+        $wh = implode(' AND ', $pieces);
         $sql = "UPDATE $table SET $str WHERE $wh";
         $row = self::exec($sql);
         return $row;
