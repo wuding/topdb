@@ -291,7 +291,8 @@ class Tbl
                 $pieces[] = $value;
                 continue 1;
             }
-            $val = is_numeric($value) ? $value : "'". addslashes($value) ."'";
+            $type = gettype($value);
+            $val = in_array($type, array('integer')) ? $value : "'". addslashes($value) ."'";
             $pieces[] = "`$key` = $val";
         }
         return $str = implode(' AND '. PHP_EOL, $pieces);
