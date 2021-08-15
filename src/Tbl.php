@@ -533,6 +533,9 @@ class Tbl
             $value = addslashes($value);
             $pieces[] = "`$key` = '$value'";
         }
+        if (!$pieces) {
+            return false;
+        }
         $str = implode(', ', $pieces);
         $pieces = array();
         foreach ($where as $key => $value) {
