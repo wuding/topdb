@@ -264,7 +264,8 @@ class Tbl
                 $pieces[] = $value;
                 continue 1;
             }
-            $val = is_numeric($value) ? $value : "'". addslashes($value) ."'";
+            $type = gettype($value);
+            $val = in_array($type, array('integer')) ? $value : "'". addslashes($value) ."'";
             if (null === $value) {
                 continue 1;
                 $val = is_null($value) ? 'NULL' : $val;
