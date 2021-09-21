@@ -32,6 +32,7 @@ class Tbl
     public static $memories = array();
     public $key = null;
     public $memory_key = null;
+    public $sql = array();
 
     public function __construct($vars = null, $prop = null, $conf = null, $connect = null)
     {
@@ -428,6 +429,7 @@ class Tbl
     {
         //=f
         $direct = null;
+        $returns = $options['returns'] ?? null;
 
         //=z
         if (is_string($column)) {
@@ -441,6 +443,9 @@ class Tbl
 
         // 拼接 SQL
         $sql = self::selectSql($column, $where, $order, 1, $options);
+        if ('sql' === $returns) {
+            return $sql;
+        }
 
         // 查询
         $row = self::object($sql);
@@ -514,7 +519,7 @@ class Tbl
             'INSERT INTO' => $table,
             'SET' => $this->sqlSet($data),
         );
-        $sql = self::sqlPieces($pieces);
+        $this->sql = $sql = self::sqlPieces($pieces);
         $row = self::exec($sql);
         return self::lastInsertId();
     }
