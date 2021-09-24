@@ -368,7 +368,7 @@ class Tbl
 
     // 多行查询的语句
     // 计划：增加 GROUP BY 等支持，支持多个连接
-    public function selectSql($column = null, $where = null, $order = null, $limit = null, $options = array())
+    public function selectSql($column = null, $where = null, $order = null, $limit = 10, $options = array())
     {
         //=f
         $alias = $left_join = null;
@@ -397,7 +397,8 @@ class Tbl
             'LIMIT' => $this->sqlLimit($limit),
             'OFFSET' => $offset,
         );
-        return $sql = self::sqlPieces($pieces);
+        $this->sql = $sql = self::sqlPieces($pieces);
+        return $sql;
     }
 
     public function sqlInsert()
