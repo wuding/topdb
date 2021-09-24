@@ -450,7 +450,14 @@ class Tbl
 
         // 查询
         $row = self::object($sql);
+        // 单列
         if ($row && true === $direct) {
+            $subject = trim($column);
+            // 别名
+            if (preg_match("/\s+/", $subject)) {
+                $array = preg_split("/\s+/", $subject);
+                $column = array_pop($array);
+            }
             $row = $row->$column ?? true;
         }
         return $row;
