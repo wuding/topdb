@@ -125,6 +125,7 @@ class Tbl
             return $conn;
         }
         self::$connects[$key] = $conn = new PDObj($dsn, $username, $password, $options);
+        $this->data['connect'] = get_defined_vars();
         return $conn;
     }
 
@@ -594,6 +595,7 @@ class Tbl
         //=f
         $ttl = 86400;
         $ns = 'SQL_SELECT';
+        $dump_sql = null;
         if (array_key_exists(4, $param_arr)) {
             $options = $param_arr[4];
             if (is_array($options)) {
@@ -604,6 +606,10 @@ class Tbl
                 if (array_key_exists('ns', $options)) {
                     $ns = $options['ns'];
                     unset($options['ns']);
+                }
+                if (array_key_exists('dump_sql', $options)) {
+                    $dump_sql = $options['dump_sql'];
+                    unset($options['dump_sql']);
                 }
             } else {
                 $ttl = $options;
@@ -617,6 +623,10 @@ class Tbl
         $key = "$ns:$md5";
 
         //=l
+        if ($dump_sql) {
+            return get_defined_vars();
+        }
+
         // 不缓存
         if (false === $ttl) {
             return $all = self::all($sql);
