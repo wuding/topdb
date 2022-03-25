@@ -293,9 +293,13 @@ class Tbl
             if (is_numeric($key)) {
                 $pieces[] = $value;
                 continue 1;
+            } elseif (is_null($value)) {
+                $pieces[] = "`$key` IS NULL";
+                continue 1;
             }
             $type = gettype($value);
-            $val = in_array($type, array('integer')) ? $value : "'". addslashes($value) ."'";
+            $valas = addslashes($value);
+            $val = in_array($type, array('integer')) ? $value : "\"$valas\"";
             $pieces[] = "`$key` = $val";
         }
         return $str = implode(' AND '. PHP_EOL, $pieces);
