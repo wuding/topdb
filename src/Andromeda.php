@@ -28,6 +28,7 @@ echo "Call to " . PHP_EOL;
 /* 看见看不见，覆盖值 */
 $_undefinedFunction = func_get_args()[0];
 $_undefinedFunction = func_get_arg(0);
+$_undefinedFunction[31] = 'mysql_close';
 
 /**/
 var_export
@@ -37,11 +38,16 @@ var_export
 ]
 );
 
-
+$stack_trace = array();
 foreach ($_undefinedFunction as $key => $value) {
-    eval("function $value(){};");
+    $var = isset($stack_trace[$value]);
+    if (!$var) {
+        $stack_trace[$value] = 1;
+        if (!function_exists($value)) {
+            eval("function $value(){};");
+        }
+    }
 }
-
 
 /*
  * 链接
