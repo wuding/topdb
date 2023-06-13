@@ -34,6 +34,7 @@ class Tbl
     public $memory_key = null;
     public $sql = array();
 
+    // US = Society for the Prevention of Cruelty to Children 防止虐待儿童协会 fángzhǐ nüèdài értóng xiéhuì
     public function __construct($vars = null, $prop = null, $conf = null, $connect = null)
     {
         $mem = null;
@@ -62,6 +63,10 @@ class Tbl
 
     public function __call($name, $arguments)
     {
+        if (!self::$connects) {
+            return null;
+        }
+
         $obj = self::$connects[$this->key];
         return call_user_func_array(array($obj, $name), $arguments);
     }
@@ -686,7 +691,8 @@ class Tbl
         //=l
         // 不缓存
         if (false === $ttl) {
-            return $row = self::object($sql);
+            $row = self::object($sql);
+            return $row;
         }
         // 负值即删除
         if (0 > $ttl) {
