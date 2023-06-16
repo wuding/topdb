@@ -4,10 +4,11 @@ namespace Topdb;
 
 use Ext\PDObj;
 use Pkg\Glob;
+use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = '21.2.16';
+    const VERSION = '23.6.16';
 
     // 配置
     public static $vars = null;
@@ -34,14 +35,55 @@ class Tbl
     public $memory_key = null;
     public $sql = array();
 
+    // 编译时
+    public $functions = array(
+        '__construct' => array(
+            // 对错
+            'arguments' => array(
+                'vars' => null,
+                'prop' => null,
+                'conf' => null,
+                'connect' => null,
+            ),
+            // 好坏
+            'procedure' => array(
+                'merge_props' => array(
+                ),
+            ),
+            // 善恶
+            'results' => array(
+            ),
+        ),
+        'connect' =>  array(
+            // 对错
+            'arguments' => array(
+                'vars' => null,
+            ),
+            // 好坏
+            'procedure' => array(
+                'dsn_results' => array(
+                ),
+            ),
+            // 善恶
+            'results' => array(
+            ),
+        ),
+    );
+
+    // unique
+
+
     // US = Society for the Prevention of Cruelty to Children 防止虐待儿童协会 fángzhǐ nüèdài értóng xiéhuì
     public function __construct($vars = null, $prop = null, $conf = null, $connect = null)
     {
+        $this->$functions[__FUNCTION__]['arguments'] = get_defined_vars();
+
         $mem = null;
         // 遍历设置属性
         if (is_array($prop)) {
             foreach ($prop as $key => $value) {
                 $this->$key = $value;
+                $this->$functions[__FUNCTION__]['procedure']['iteration_set_props'][$key] = $value;
             }
         } elseif (is_string($prop) || is_object($prop)) { // 仅设置内存缓存
             $mem = $prop;
@@ -56,8 +98,10 @@ class Tbl
             $val = $this->$key;
             if (!$val) {
                 $this->$key = $value;
+                $this->$functions[__FUNCTION__]['procedure']['merge_props'][$key] = $value;
             }
         }
+
         $this->init($vars, $mem, $connect);
     }
 
@@ -113,12 +157,13 @@ class Tbl
     {
         $vars = null === $vars ? static::$vars : $vars;
         $conf = $this->conf($vars);
-        $dsn = $this->dsn($conf);
+        $this->$functions[__FUNCTION__]['procedure']['dsn_results'] = $dsn_results = $this->dsn($conf, 'dsn,prefix,variable');
+
         $username = $conf['username'] ?? null;
         $password = $conf['password'] ?? null;
         $options = $conf['options'] ?? null;
         $arr = array(
-            'dsn' => $dsn,
+            'dsn' => $dsn_results['dsn'],
             'username' => $username,
             'passwd' => $password,
             'options' => $options,
@@ -129,7 +174,17 @@ class Tbl
             $conn = self::$connects[$key];
             return $conn;
         }
-        self::$connects[$key] = $conn = new PDObj($dsn, $username, $password, $options);
+
+        $dsn_prefix = $dsn_results['prefix'];
+        $if_true = 'php' == $dsn_prefix;
+        $db_table = array('db_name' => $this->db_name, 'table_name' => $this->table_name);;
+
+        if ($if_true) {
+            self::$connects[$key] = $conn = new PFSys($this->$functions, $db_table);
+        } else {
+            self::$connects[$key] = $conn = new PDObj($dsn_results['dsn'], $username, $password, $options);
+        }
+
         $this->data['connect'] = get_defined_vars();
         return $conn;
     }
@@ -146,7 +201,7 @@ class Tbl
         return $data;
     }
 
-    public function dsn($variable = null)
+    public function dsn($variable = null, $var_names = null)
     {
         $prefix = $variable['dsn_prefix'] ?: '';
         $string = $variable[''] ?? array();
@@ -167,7 +222,30 @@ class Tbl
         }
         $str = implode(';', $pieces);
         $dsn = "$prefix:$str";
-        return $dsn;
+
+        $vars = get_defined_vars();
+        return $this->return_results($vars, $var_names);
+    }
+
+    public function return_results($variable, $var_names = null)
+    {
+        if (in_array($var_names, ['', 'all'], true)) {
+            return $variable;
+        }
+
+        $arr = explode(',', $var_names);
+        $count = count($arr);
+
+        if (1 === $count) {
+            $results = $variable[$var_names] ?? null;
+            return $results;
+        }
+
+        $results = array();
+        foreach ($arr as $key => $val) {
+            $results[$val] = $variable[$val] ?? null;
+        }
+        return $results;
     }
 
     /*
@@ -477,7 +555,15 @@ class Tbl
     public function select()
     {
         $param_arr = func_get_args();
+        if ('php' === $this->$functions['connect']['procedure']['dsn_results']['prefix']) {
+            $obj = self::$connects[$this->key];
+            $all = call_user_func_array(array($obj, 'select'), $param_arr);
+            return $all;
+        }
+
+
         $sql = call_user_func_array(array($this, 'selectSql'), $param_arr);
+
         $all = self::all($sql);
         return $all;
     }
@@ -737,4 +823,5 @@ class Tbl
     {
 
     }
+
 }
