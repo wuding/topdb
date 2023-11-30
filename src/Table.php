@@ -6,7 +6,8 @@ use Ext\Yac;
 
 class Table
 {
-    const VERSION = '20.213.103';
+    const VERSION = '20.2023.12.1';
+
     public $adapter = null;
     public $fields = '';
     public static $data = array(
@@ -278,6 +279,20 @@ class Table
     public function queryAll($sql)
     {
         return $arr = $this->query($sql, \PDO::FETCH_OBJ);
+    }
+
+    // 获取多行
+    public function all($sql)
+    {
+        $sth = $this->prepare($sql);
+        $sth->execute();
+
+        if (false === $sth) {
+            return $sth;
+        }
+
+        $all = $sth->fetchAll(\PDO::FETCH_OBJ);
+        return $all;
     }
 
     /*
