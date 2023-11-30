@@ -6,6 +6,8 @@ use Ext\PhpPdoMysql;
 
 class Topdb extends _Abstract
 {
+    const VERSION = '20.2023.12.1';
+
     public $config = array(
         'db_type' => 'mysql',
         'dbname' => 'mysql',
@@ -23,6 +25,7 @@ class Topdb extends _Abstract
         'integer' => null,
         'double' => null,
         'NULL' => null,
+        'boolean' => null,
     ];
     public $ignore_values = [];
     public $ignore_fields = [];
@@ -118,7 +121,7 @@ class Topdb extends _Abstract
             } elseif (in_array($type, ['integer', 'double'])) {
                 $quote = 0;
 
-            } elseif ('bool' == $type) {
+            } elseif (in_array($type, ['bool', 'boolean'])) {
                 $quote = 0;
                 $value = intval($value);
 
