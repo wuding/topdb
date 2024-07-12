@@ -629,33 +629,17 @@ class Tbl
     }
 
     // 计划：使用拼接方法
-    public function update($variable, $where)
+    public function update($data, $where)
     {
         $table = self::dbTable();
-        $pieces = array();
-        foreach ($variable as $key => $value) {
-            // 空值
-            if (null === $value) {
-                $pieces[] = "`$key` = NULL";
-                continue 1;
-            }
-            // 字符串
-            $value = addslashes($value);
-            $pieces[] = "`$key` = '$value'";
-        }
-        if (!$pieces) {
-            return false;
-        }
-        $str = implode(', ', $pieces);
-        $pieces = array();
-        foreach ($where as $key => $value) {
-            $value = addslashes($value);
-            $pieces[] = "`$key` = '$value'";
-        }
-        $wh = implode(' AND ', $pieces);
-        $sql = "UPDATE $table SET $str WHERE $wh";
-        $row = self::exec($sql);
-        return $row;
+        $pieces = array(
+            'UPDATE' => $table,
+            'SET' => $this->sqlSet($data),
+            'WHERE' => $this->sqlWhere($where),
+        );
+        $this->sql = $sql = self::sqlPieces($pieces);
+        $update = self::exec($sql);
+        return $update;
     }
 
     public function delete($where = null, $column = null)
