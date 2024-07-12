@@ -76,14 +76,14 @@ class Tbl
     // US = Society for the Prevention of Cruelty to Children 防止虐待儿童协会 fángzhǐ nüèdài értóng xiéhuì
     public function __construct($vars = null, $prop = null, $conf = null, $connect = null)
     {
-        $this->$functions[__FUNCTION__]['arguments'] = get_defined_vars();
+        $this->functions[__FUNCTION__]['arguments'] = get_defined_vars();
 
         $mem = null;
         // 遍历设置属性
         if (is_array($prop)) {
             foreach ($prop as $key => $value) {
                 $this->$key = $value;
-                $this->$functions[__FUNCTION__]['procedure']['iteration_set_props'][$key] = $value;
+                $this->functions[__FUNCTION__]['procedure']['iteration_set_props'][$key] = $value;
             }
         } elseif (is_string($prop) || is_object($prop)) { // 仅设置内存缓存
             $mem = $prop;
@@ -98,7 +98,7 @@ class Tbl
             $val = $this->$key;
             if (!$val) {
                 $this->$key = $value;
-                $this->$functions[__FUNCTION__]['procedure']['merge_props'][$key] = $value;
+                $this->functions[__FUNCTION__]['procedure']['merge_props'][$key] = $value;
             }
         }
 
@@ -157,7 +157,7 @@ class Tbl
     {
         $vars = null === $vars ? static::$vars : $vars;
         $conf = $this->conf($vars);
-        $this->$functions[__FUNCTION__]['procedure']['dsn_results'] = $dsn_results = $this->dsn($conf, 'dsn,prefix,variable');
+        $this->functions[__FUNCTION__]['procedure']['dsn_results'] = $dsn_results = $this->dsn($conf, 'dsn,prefix,variable');
 
         $username = $conf['username'] ?? null;
         $password = $conf['password'] ?? null;
@@ -180,7 +180,7 @@ class Tbl
         $db_table = array('db_name' => $this->db_name, 'table_name' => $this->table_name);;
 
         if ($if_true) {
-            self::$connects[$key] = $conn = new PFSys($this->$functions, $db_table);
+            self::$connects[$key] = $conn = new PFSys($this->functions, $db_table);
         } else {
             self::$connects[$key] = $conn = new PDObj($dsn_results['dsn'], $username, $password, $options);
         }
@@ -555,7 +555,7 @@ class Tbl
     public function select()
     {
         $param_arr = func_get_args();
-        if ('php' === $this->$functions['connect']['procedure']['dsn_results']['prefix']) {
+        if ('php' === $this->functions['connect']['procedure']['dsn_results']['prefix']) {
             $obj = self::$connects[$this->key];
             $all = call_user_func_array(array($obj, 'select'), $param_arr);
             return $all;
