@@ -8,7 +8,7 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = '23.6.16';
+    const VERSION = 24.0811;
 
     // 配置
     public static $vars = null;
@@ -657,9 +657,43 @@ class Tbl
 
     }
 
-    public function exist()
+    public function exist($data, $condition = null, $column = null)
     {
+        $column = $column ?: $this->primary_key;
+        $where = array();
+        if ($condition) {
+            if (is_numeric($condition)) {
+                $where = $condition;
+            } elseif (is_string($condition)) {
+                $variable = explode(',', $condition);
+                foreach ($variable as $key) {
+                    if (array_key_exists($key, $data)) {
+                        $where[$key] = $data[$key];
+                    }
+                }
+            } elseif (is_array($condition)) {
+                foreach ($condition as $key => $value) {
+                    if (is_numeric($key)) {
+                        if (array_key_exists($value, $data)) {
+                            $where[$value] = $data[$value];
+                        }
+                    } else {
+                        $where[$key] = $value;
+                    }
+                }
+            }
+        } else {
+            $where = $data;
+        }
 
+        $row = $this->get($column, $where);
+        if (false !== $row) {
+            return $row;
+        }
+
+        $data['created'] = time();
+        $ins = $this->insert($data);
+        return $ins;
     }
 
     /*
