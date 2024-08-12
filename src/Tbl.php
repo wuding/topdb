@@ -8,7 +8,7 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 24.0811;
+    const VERSION = 24.0813;
 
     // 配置
     public static $vars = null;
@@ -657,7 +657,7 @@ class Tbl
 
     }
 
-    public function exist($data, $condition = null, $column = null)
+    public function exist($data, $condition = null, $column = null, $update = array())
     {
         $column = $column ?: $this->primary_key;
         $where = array();
@@ -688,6 +688,14 @@ class Tbl
 
         $row = $this->get($column, $where);
         if (false !== $row) {
+            if ($update) {
+                $up = $this->update($data, $row);
+                $arr = array();
+                foreach ($update as $key) {
+                    $arr[$key] = $$key;
+                }
+                return $arr;
+            }
             return $row;
         }
 
