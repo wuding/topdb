@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 24.0813;
-    const REVISION = 28;
+    const VERSION = 24.0814;
+    const REVISION = 29;
 
     // 配置
     public static $vars = null;
@@ -653,9 +653,9 @@ class Tbl
     /*
     补充
     */
-    public function has()
+    public function has($where, $column = 'id')
     {
-
+        return $this->get($column, $where);
     }
 
     public function exist($data, $condition = null, $column = null, $update = array(), $insert  = array())
