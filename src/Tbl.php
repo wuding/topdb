@@ -9,6 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 24.0813;
+    const REVISION = 28;
 
     // 配置
     public static $vars = null;
@@ -657,7 +658,7 @@ class Tbl
 
     }
 
-    public function exist($data, $condition = null, $column = null, $update = array())
+    public function exist($data, $condition = null, $column = null, $update = array(), $insert  = array())
     {
         $column = $column ?: $this->primary_key;
         $where = array();
@@ -700,6 +701,7 @@ class Tbl
         }
 
         $data['created'] = time();
+        $data = array_merge($data, $insert);
         $ins = $this->insert($data);
         return $ins;
     }
