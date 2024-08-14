@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 24.0814;
-    const REVISION = 29;
+    const REVISION = 30;
 
     // 配置
     public static $vars = null;
@@ -346,10 +346,13 @@ class Tbl
     {
         $pieces = [];
         foreach ($data as $key => $value) {
-            if (is_numeric($key)) {
-                $pieces[] = $value;
+            if (is_int($key)) {
+                if (-1 < $key) {
+                    $pieces[] = $value;
+                }
                 continue 1;
             }
+
             $type = gettype($value);
             $val = in_array($type, array('integer')) ? $value : "'". addslashes($value) ."'";
             if (null === $value) {
@@ -359,7 +362,6 @@ class Tbl
             $pieces[] = "`$key` = $val";
         }
         return $str = implode(','. PHP_EOL, $pieces);
-        print_r($str);
     }
 
     public function sqlWhere($data, $alias = null)
@@ -700,7 +702,11 @@ class Tbl
             return $row;
         }
 
-        $data['created'] = time();
+        $created = $data[-1] ?? null;
+        if (false !== $created) {
+            $data['created'] = time();
+        }
+
         $data = array_merge($data, $insert);
         $ins = $this->insert($data);
         return $ins;
