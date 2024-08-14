@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 24.0815;
-    const REVISION = 31;
+    const REVISION = 32;
 
     // 配置
     public static $vars = null;
@@ -346,6 +346,10 @@ class Tbl
     {
         $pieces = [];
         foreach ($data as $key => $value) {
+            if ('' === $key) {
+                continue 1;
+            }
+
             if (is_int($key)) {
                 if (-1 < $key) {
                     $pieces[] = $value;
