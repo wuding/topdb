@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 24.0814;
-    const REVISION = 30;
+    const VERSION = 24.0815;
+    const REVISION = 31;
 
     // 配置
     public static $vars = null;
@@ -702,7 +702,7 @@ class Tbl
             return $row;
         }
 
-        $created = $data[-1] ?? null;
+        $created = $data[''] ?? null;
         if (false !== $created) {
             $data['created'] = time();
         }
