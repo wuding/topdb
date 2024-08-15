@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 24.0815;
-    const REVISION = 32;
+    const REVISION = 33;
 
     // 配置
     public static $vars = null;
@@ -342,7 +342,7 @@ class Tbl
         return $str = implode(".", $pieces);
     }
 
-    public function sqlSet($data)
+    public function sqlSet($data, $func = null)
     {
         $pieces = [];
         foreach ($data as $key => $value) {
@@ -360,7 +360,10 @@ class Tbl
             $type = gettype($value);
             $val = in_array($type, array('integer')) ? $value : "'". addslashes($value) ."'";
             if (null === $value) {
-                continue 1;
+                if (null === $func) {
+                    continue 1;
+                }
+
                 $val = is_null($value) ? 'NULL' : $val;
             }
             $pieces[] = "`$key` = $val";
@@ -641,7 +644,7 @@ class Tbl
         $table = self::dbTable();
         $pieces = array(
             'UPDATE' => $table,
-            'SET' => $this->sqlSet($data),
+            'SET' => $this->sqlSet($data, 'update'),
             'WHERE' => $this->sqlWhere($where),
         );
         $this->sql = $sql = self::sqlPieces($pieces);
@@ -664,7 +667,7 @@ class Tbl
         return $this->get($column, $where);
     }
 
-    public function exist($data, $condition = null, $column = null, $update = array(), $insert  = array())
+    public function exist($data, $condition = null, $column = null, $update = array(), $insert  = array(), $op = array())
     {
         $column = $column ?: $this->primary_key;
         $where = array();
@@ -703,6 +706,10 @@ class Tbl
                 }
                 return $arr;
             }
+            return $row;
+        }
+
+        if (in_array('insert', $op)) {
             return $row;
         }
 
