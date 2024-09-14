@@ -8,17 +8,23 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 24.0815;
-    const REVISION = 33;
+    const VERSION = 24.0823;
+    const REVISION = 34;
 
     // 配置
     public static $vars = null;
     public $config_file = null;
+    public $config_name = null;
     public $config_item = null;
     public $config_db = 'Db';
     public $db_connect = null;
     public $db_name = null;
+    public $db_origin = null;
+    public $db_suffix = null;
     public $table_name = null;
+    public $table_origin = null;
+    public $table_prefix = null;
+    public $table_suffix = null;
     public $primary_key = null;
     public $data = array(
         'mysql' => array(
@@ -178,7 +184,7 @@ class Tbl
 
         $dsn_prefix = $dsn_results['prefix'];
         $if_true = 'php' == $dsn_prefix;
-        $db_table = array('db_name' => $this->db_name, 'table_name' => $this->table_name);;
+        $db_table = array('db_name' => $this->db_name, 'table_name' => $this->table_name);
 
         if ($if_true) {
             self::$connects[$key] = $conn = new PFSys($this->functions, $db_table);
@@ -333,7 +339,41 @@ class Tbl
         return $column;
     }
 
+    public function _setDbName()
+    {
+        if (!$this->db_origin) {
+            return false;
+        }
+
+        $pieces = array(
+            $this->db_origin,
+            $this->db_suffix,
+        );
+        $this->db_name = implode('', $pieces);
+    }
+
+    public function _setTableName()
+    {
+        if (!$this->table_origin) {
+            return false;
+        }
+
+        $pieces = array(
+            $this->table_prefix,
+            $this->table_origin,
+            $this->table_suffix,
+        );
+        $this->table_name = implode('', $pieces);
+    }
+
     public function dbTable()
+    {
+        $this->_setDbName();
+        $this->_setTableName();
+        return $this->dbTableV1();
+    }
+
+    public function dbTableV1()
     {
         $pieces = array($this->db_name, $this->table_name);
         foreach ($pieces as $key => $value) {
@@ -652,6 +692,35 @@ class Tbl
         return $update;
     }
 
+    public function updates($variable)
+    {
+        return $this->batch($variable, 'update');
+    }
+
+    public function set($column, $value, $where)
+    {
+        $data = array(
+            $column => $value,
+        );
+
+        $update = $this->update($data, $where);
+        return $update;
+    }
+
+    public function sets($variable)
+    {
+        return $this->batch($variable, 'set');
+    }
+
+    public function batch($variable, $func = null)
+    {
+        $arr = array();
+        foreach ($variable as $key => $param_arr) {
+            $arr[$key] = call_user_func_array(array($this, $func), $param_arr);
+        }
+        return $arr;
+    }
+
     public function delete($where = null, $column = null)
     {
         $sql = $this->sqlDelete($column, $where);
@@ -864,9 +933,20 @@ class Tbl
         return $row->num;
     }
 
-    public function count()
+    public function count($where = null, $column = null)
     {
+        $column = $column ?: '*';
+        $select = "COUNT($column) AS num";
+        $table = $this->dbTable();
 
+        $pieces = array(
+            'SELECT' => $select,
+            'FROM' => $table,
+            'WHERE' => $this->sqlWhere($where),
+        );
+        $this->sql = $sql = self::sqlPieces($pieces);
+        $row = self::object($sql);
+        return $row->num;
     }
 
 }
