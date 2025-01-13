@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 24.0823;
-    const REVISION = 34;
+    const VERSION = 25.0110;
+    const REVISION = 35;
 
     // 配置
     public static $vars = null;
@@ -334,7 +334,7 @@ class Tbl
             }
             $column = implode(", ", $pieces);
         } else {
-            $column = $variable;
+            $column = $variable ?: '*';
         }
         return $column;
     }
@@ -738,6 +738,12 @@ class Tbl
 
     public function exist($data, $condition = null, $column = null, $update = array(), $insert  = array(), $op = array())
     {
+        $insert_created = 'time';
+        $var_array = $data[''] ?? null;
+        if (is_array($var_array)) {
+            extract($var_array);
+        }
+
         $column = $column ?: $this->primary_key;
         $where = array();
         if ($condition) {
@@ -782,9 +788,12 @@ class Tbl
             return $row;
         }
 
-        $created = $data[''] ?? null;
-        if (false !== $created) {
-            $data['created'] = time();
+        if ($insert_created) {
+            $created = time();
+            if ('time' !== $insert_created) {
+                $created = date($insert_created);
+            }
+            $data['created'] = $created;
         }
 
         $data = array_merge($data, $insert);
