@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0110;
-    const REVISION = 35;
+    const VERSION = 25.0202;
+    const REVISION = 36;
 
     // 配置
     public static $vars = null;
@@ -334,6 +334,7 @@ class Tbl
             }
             $column = implode(", ", $pieces);
         } else {
+            $variable = trim($variable);
             $column = $variable ?: '*';
         }
         return $column;
@@ -535,7 +536,45 @@ class Tbl
             'LIMIT' => $this->sqlLimit($limit),
             'OFFSET' => $offset,
         );
-        $this->sql = $sql = self::sqlPieces($pieces);
+        $this->sql[] = $sql = self::sqlPieces($pieces);
+        return $sql;
+    }
+
+    public function selectSqlInnerJoin($sql, $innerJoin, $param_arr)
+    {
+        if ($sql) {
+            $this->sql[] = $sql;
+            return $sql;
+        }
+
+        if ($innerJoin) {
+            $string = $param_arr[0] ?? null;
+            $haystack = explode(',', $string);
+            if (in_array($innerJoin, $haystack)) {
+                $flip = array_flip($haystack);
+                $key = $flip[$innerJoin] ?? null;
+                $haystack[$key] = "A.$innerJoin";
+            } else {
+                $haystack[] = "A.$innerJoin";
+            }
+            $col = implode(',', $haystack);
+            $table = self::dbTable();
+
+            $param_arr[0] = $innerJoin;
+            $sql_ij = call_user_func_array(array($this, 'selectSql'), $param_arr);
+            $sql = <<<HEREDOC
+SELECT $col
+FROM $table A
+INNER JOIN (
+$sql_ij
+) B ON A.$innerJoin = B.$innerJoin
+HEREDOC;
+
+        } else {
+            $sql = call_user_func_array(array($this, 'selectSql'), $param_arr);
+        }
+
+        $this->sql[] = $sql;
         return $sql;
     }
 
@@ -611,12 +650,50 @@ class Tbl
             return $all;
         }
 
+        $string = $param_arr[0] ?? null;
+        $options = $param_arr[4] ?? null;
+        $column = self::columnName($string);
 
-        $sql = call_user_func_array(array($this, 'selectSql'), $param_arr);
+        $single_row = null;
+        $sql = null;
+        $innerJoin = null;
+        $ttl = null;
+        $ns = 'SELECT';
+        if (is_array($options)) {
+            extract($options);
+        }
 
-        $all = self::all($sql);
+        $sql = $this->selectSqlInnerJoin($sql, $innerJoin, $param_arr);
+
+        $direct = null;
+        if (is_string($column)) {
+            $column = trim($column);
+            // 字符串单列直接返回
+            if ($column && '*' !== $column) {
+                $pos = strpos($column, ',');
+                $direct = false === $pos;
+            }
+        }
+
+        $all = $this->memAll($sql, $ttl, $ns);
+        if ($single_row && $all && true === $direct) {
+            $subject = trim($column);
+            // 别名
+            if (preg_match("/\s+/", $subject)) {
+                $array = preg_split("/\s+/", $subject);
+                $column = array_pop($array);
+            }
+            $arr = [];
+            foreach ($all as $key => $value) {
+                $arr[] = $value->$column ?? true;
+            }
+            return $arr;
+        }
+
         return $all;
     }
+
+
 
     // 计划：待删
     public function sqlSelect0($column = null, $where = null, $order = null, $limit = null, $join = null)
@@ -673,7 +750,7 @@ class Tbl
             'INSERT INTO' => $table,
             'SET' => $this->sqlSet($data),
         );
-        $this->sql = $sql = self::sqlPieces($pieces);
+        $this->sql[] = $sql = self::sqlPieces($pieces);
         $row = self::exec($sql);
         return self::lastInsertId();
     }
@@ -687,7 +764,7 @@ class Tbl
             'SET' => $this->sqlSet($data, 'update'),
             'WHERE' => $this->sqlWhere($where),
         );
-        $this->sql = $sql = self::sqlPieces($pieces);
+        $this->sql[] = $sql = self::sqlPieces($pieces);
         $update = self::exec($sql);
         return $update;
     }
@@ -804,6 +881,50 @@ class Tbl
     /*
     内存缓存
     */
+
+    public function memKey($sql, $ns = 'SELECT')
+    {
+        $md5 = md5($sql);
+        return $key = "$ns:$md5";
+    }
+
+    public function memAll()
+    {
+        list($sql, $ttl, $ns) = func_get_args();
+
+        // 不缓存
+        if (false === $ttl || is_null($ttl)) {
+             $all = self::all($sql);
+             Glob::sqlDiff($sql);
+             return $all;
+        }
+
+        $key = $this->memKey($sql, $ns);
+
+        // 负值即删除
+        if (0 > $ttl) {
+            $del = $this->mem()->del($key);
+            return $del;
+        }
+
+        //=sh
+        $val = $this->mem()->getJSON($key, '__FALSE__');
+
+        //=l
+        // 错误：可能缓存的值就是 false
+        if ('__FALSE__' !== $val) {
+            return $val;
+        }
+
+        //=j
+        $all = self::all($sql);
+        $set = $this->mem()->setJSON($key, $all, $ttl);
+        Glob::sqlDiff($sql);
+
+        //=g
+        return $all;
+    }
+
     // 从内存读写多行查询
     public function memSelect()
     {
@@ -847,7 +968,9 @@ class Tbl
 
         // 不缓存
         if (false === $ttl) {
-            return $all = self::all($sql);
+             $all = self::all($sql);
+             Glob::sqlDiff($sql);
+             return $all;
         }
         // 负值即删除
         if (0 > $ttl) {
@@ -867,6 +990,7 @@ class Tbl
         //=j
         $all = self::all($sql);
         $set = $this->mem()->setJSON($key, $all, $ttl);
+        Glob::sqlDiff($sql);
 
         //=g
         return $all;
@@ -953,7 +1077,7 @@ class Tbl
             'FROM' => $table,
             'WHERE' => $this->sqlWhere($where),
         );
-        $this->sql = $sql = self::sqlPieces($pieces);
+        $this->sql[] = $sql = self::sqlPieces($pieces);
         $row = self::object($sql);
         return $row->num;
     }
