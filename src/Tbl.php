@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0202;
-    const REVISION = 37;
+    const REVISION = 38;
 
     // 配置
     public static $vars = null;
@@ -612,7 +612,6 @@ HEREDOC;
     public function get($column = null, $where = null, $order = null, $options = array())
     {
         //=f
-        $direct = null;
         $returns = null;
         $ttl = null;
         $ns = 'GET';
@@ -620,37 +619,9 @@ HEREDOC;
         $json = null;
         $hash = null;
         $len = null;
+        $single_row = true;
         if (is_array($options)) {
             extract($options);
-        }
-
-        if (0 === $json && $where) {
-            $wh = $where;
-            if (is_array($where)) {
-                $count = count($where);
-                if (1 === $count) {
-                    foreach ($where as $key => $value) {
-                        if (is_numeric($key)) {
-                            $wh = $value;
-                        } else {
-                            $wh = $value;
-                        }
-                    }
-                }
-            }
-            $subject = json_encode($wh);
-            $pr = preg_replace("#[\{\}\[\]\"]+#", '', $subject);
-            $hash = str_replace(':', '_', $pr);
-        }
-
-        //=z
-        if (is_string($column)) {
-            $column = trim($column);
-            // 字符串单列直接返回
-            if ($column && '*' !== $column) {
-                $pos = strpos($column, ',');
-                $direct = false === $pos;
-            }
         }
 
         // 拼接 SQL
@@ -660,17 +631,8 @@ HEREDOC;
         }
 
         // 查询
-        $row = $this->memObject($sql, $ttl, $ns, $false, $column, $direct, $hash, $len);
-        // 单列
-        if ($row && true === $direct && is_object($row)) {
-            $subject = trim($column);
-            // 别名
-            if (preg_match("/\s+/", $subject)) {
-                $array = preg_split("/\s+/", $subject);
-                $column = array_pop($array);
-            }
-            $row = $row->$column ?? true;
-        }
+        $hash = $this->hash($hash, $json, $where);
+        $row = $this->memObject($sql, $ttl, $ns, $false, $column, $hash, $len, $single_row);
         return $row;
     }
 
@@ -698,32 +660,7 @@ HEREDOC;
         }
 
         $sql = $this->selectSqlInnerJoin($sql, $innerJoin, $param_arr);
-
-        $direct = null;
-        if (is_string($column)) {
-            $column = trim($column);
-            // 字符串单列直接返回
-            if ($column && '*' !== $column) {
-                $pos = strpos($column, ',');
-                $direct = false === $pos;
-            }
-        }
-
-        $all = $this->memAll($sql, $ttl, $ns);
-        if ($single_row && $all && true === $direct) {
-            $subject = trim($column);
-            // 别名
-            if (preg_match("/\s+/", $subject)) {
-                $array = preg_split("/\s+/", $subject);
-                $column = array_pop($array);
-            }
-            $arr = [];
-            foreach ($all as $key => $value) {
-                $arr[] = $value->$column ?? true;
-            }
-            return $arr;
-        }
-
+        $all = $this->memAll($sql, $ttl, $ns, $column, $single_row);
         return $all;
     }
 
@@ -930,6 +867,18 @@ HEREDOC;
     内存缓存
     */
 
+    public function row($sql, $col, $single_row)
+    {
+        $row = self::object($sql);
+        return $this->single_row($row, $col, $single_row, 1);
+    }
+
+    public function rows($sql, $col, $single_row)
+    {
+        $all = self::all($sql);
+        return $this->single_row($all, $col, $single_row);
+    }
+
     public function memKey($sql, $ns = 'SELECT', $hash = null, $len = null)
     {
         $md5 = $hash ?: md5($sql);
@@ -941,11 +890,11 @@ HEREDOC;
 
     public function memAll()
     {
-        list($sql, $ttl, $ns) = func_get_args();
+        list($sql, $ttl, $ns, $column, $single_row) = func_get_args();
 
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
-             $all = self::all($sql);
+             $all = $this->rows($sql, $column, $single_row);
              $this->sqlDiff('select', $sql);
              return $all;
         }
@@ -968,7 +917,7 @@ HEREDOC;
         }
 
         //=j
-        $all = self::all($sql);
+        $all = $this->rows($sql, $column, $single_row);
         $set = $this->mem()->setJSON($key, $all, $ttl);
         $this->sqlDiff('select', $sql);
 
@@ -976,23 +925,14 @@ HEREDOC;
         return $all;
     }
 
-    public function row($sql, $col, $direct)
-    {
-        $row = self::object($sql);
-        if ($row && true === $direct) {
-            $row = $row->$col;
-        }
-        return $row;
-    }
-
     public function memObject()
     {
-        list($sql, $ttl, $ns, $false, $col, $direct, $hash, $len) = func_get_args();
+        list($sql, $ttl, $ns, $false, $col, $hash, $len, $single_row) = func_get_args();
 
         //=l
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
-            $row = $this->row($sql, $col, $direct);
+            $row = $this->row($sql, $col, $single_row);
             $this->sqlDiff('get', $sql);
             return $row;
         }
@@ -1015,8 +955,7 @@ HEREDOC;
 
         //=j
         // 计划：call
-        // $row = self::object($sql);
-        $row = $this->row($sql, $col, $direct);
+        $row = $this->row($sql, $col, $single_row);
         $this->sqlDiff('get', $sql);
         if ($false && false === $row) {
             return $row;
@@ -1180,6 +1119,87 @@ HEREDOC;
         $this->sql[] = $sql = self::sqlPieces($pieces);
         $row = self::object($sql);
         return $row->num;
+    }
+
+/*
+函数
+*/
+    public function direct($column)
+    {
+        $direct = null;
+        if (is_string($column)) {
+            $column = trim($column);
+            // 字符串单列直接返回
+            if ($column && '*' !== $column) {
+                $pos = strpos($column, ',');
+                $direct = false === $pos;
+            }
+        }
+        return $direct;
+    }
+
+    public function single_row($all, $column, $single_row, $one = null)
+    {
+        if (!$all || !$single_row) {
+            return $all;
+        }
+
+        $direct = $this->direct($column);
+        if ($all && true === $direct) {
+            $subject = trim($column);
+            // 别名
+            if (preg_match("/\s+/", $subject)) {
+                $array = preg_split("/\s+/", $subject);
+                $column = array_pop($array);
+            }
+
+            // 单列
+            if ($one) {
+                $row = $this->single_col($all, $column);
+                return $row;
+            }
+
+            $arr = [];
+            foreach ($all as $key => $value) {
+                $row = $this->single_col($value, $column);
+                $arr[] = $row;
+            }
+            return $arr;
+        }
+        return $all;
+    }
+
+    public function single_col($row, $column)
+    {
+        if (is_object($row)) {
+            $row = $row->$column ?? true;
+        } elseif (is_array($row)) {
+            $row = $row[$column] ?? true;
+        }
+        return $row;
+    }
+
+    public function hash($hash, $json, $where)
+    {
+        if (0 === $json && $where) {
+            $wh = $where;
+            if (is_array($where)) {
+                $count = count($where);
+                if (1 === $count) {
+                    foreach ($where as $key => $value) {
+                        if (is_numeric($key)) {
+                            $wh = $value;
+                        } else {
+                            $wh = $value;
+                        }
+                    }
+                }
+            }
+            $subject = json_encode($wh);
+            $pr = preg_replace("#[\{\}\[\]\"]+#", '', $subject);
+            $hash = str_replace(':', '_', $pr);
+        }
+        return $hash;
     }
 
 }
