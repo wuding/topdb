@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0202;
-    const REVISION = 36;
+    const REVISION = 37;
 
     // 配置
     public static $vars = null;
@@ -41,6 +41,7 @@ class Tbl
     public $key = null;
     public $memory_key = null;
     public $sql = array();
+    static $diff = array();
 
     // 编译时
     public $functions = array(
@@ -455,9 +456,14 @@ class Tbl
             return $data;
         }
 
+        $haystack = ['DOUBLE'];
         $pieces = array();
         foreach ($data as $key => $value) {
             if (is_numeric($key)) {
+                $up = strtoupper($value);
+                if (in_array($up, $haystack)) {
+                    $value = "`$value`";
+                }
                 $pieces[] = $value;
             } elseif (is_array($value)) {
 
@@ -607,7 +613,35 @@ HEREDOC;
     {
         //=f
         $direct = null;
-        $returns = $options['returns'] ?? null;
+        $returns = null;
+        $ttl = null;
+        $ns = 'GET';
+        $false = null;
+        $json = null;
+        $hash = null;
+        $len = null;
+        if (is_array($options)) {
+            extract($options);
+        }
+
+        if (0 === $json && $where) {
+            $wh = $where;
+            if (is_array($where)) {
+                $count = count($where);
+                if (1 === $count) {
+                    foreach ($where as $key => $value) {
+                        if (is_numeric($key)) {
+                            $wh = $value;
+                        } else {
+                            $wh = $value;
+                        }
+                    }
+                }
+            }
+            $subject = json_encode($wh);
+            $pr = preg_replace("#[\{\}\[\]\"]+#", '', $subject);
+            $hash = str_replace(':', '_', $pr);
+        }
 
         //=z
         if (is_string($column)) {
@@ -620,15 +654,15 @@ HEREDOC;
         }
 
         // 拼接 SQL
-        $sql = self::selectSql($column, $where, $order, 1, $options);
+        $this->sql[] = $sql = self::selectSql($column, $where, $order, 1, $options);
         if ('sql' === $returns) {
             return $sql;
         }
 
         // 查询
-        $row = self::object($sql);
+        $row = $this->memObject($sql, $ttl, $ns, $false, $column, $direct, $hash, $len);
         // 单列
-        if ($row && true === $direct) {
+        if ($row && true === $direct && is_object($row)) {
             $subject = trim($column);
             // 别名
             if (preg_match("/\s+/", $subject)) {
@@ -752,7 +786,21 @@ HEREDOC;
         );
         $this->sql[] = $sql = self::sqlPieces($pieces);
         $row = self::exec($sql);
+        $this->sqlDiff('insert', $sql);
         return self::lastInsertId();
+    }
+
+    public function sqlDiff($type, $sql, $table = null)
+    {
+        $table = $table ?: self::dbTable();
+        if (!array_key_exists($type, self::$diff)) {
+            return Glob::sqlDiff($sql);
+        }
+
+        $array = self::$diff[$type];
+        if (is_array($array) && !in_array($table, $array)) {
+            return Glob::sqlDiff($sql);
+        }
     }
 
     // 计划：使用拼接方法
@@ -882,9 +930,12 @@ HEREDOC;
     内存缓存
     */
 
-    public function memKey($sql, $ns = 'SELECT')
+    public function memKey($sql, $ns = 'SELECT', $hash = null, $len = null)
     {
-        $md5 = md5($sql);
+        $md5 = $hash ?: md5($sql);
+        if (!$hash && is_int($len)) {
+            $md5 = substr($md5, 0, $len);
+        }
         return $key = "$ns:$md5";
     }
 
@@ -895,7 +946,7 @@ HEREDOC;
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
              $all = self::all($sql);
-             Glob::sqlDiff($sql);
+             $this->sqlDiff('select', $sql);
              return $all;
         }
 
@@ -919,10 +970,59 @@ HEREDOC;
         //=j
         $all = self::all($sql);
         $set = $this->mem()->setJSON($key, $all, $ttl);
-        Glob::sqlDiff($sql);
+        $this->sqlDiff('select', $sql);
 
         //=g
         return $all;
+    }
+
+    public function row($sql, $col, $direct)
+    {
+        $row = self::object($sql);
+        if ($row && true === $direct) {
+            $row = $row->$col;
+        }
+        return $row;
+    }
+
+    public function memObject()
+    {
+        list($sql, $ttl, $ns, $false, $col, $direct, $hash, $len) = func_get_args();
+
+        //=l
+        // 不缓存
+        if (false === $ttl || is_null($ttl)) {
+            $row = $this->row($sql, $col, $direct);
+            $this->sqlDiff('get', $sql);
+            return $row;
+        }
+
+        $key = $this->memKey($sql, $ns, $hash, $len);
+
+        // 负值即删除
+        if (0 > $ttl) {
+            $del = $this->mem()->del($key);
+            return $del;
+        }
+
+        //=sh
+        $val = $this->mem()->getJSON($key, '__FALSE__');
+
+        //=l
+        if ('__FALSE__' !== $val) {
+            return $val;
+        }
+
+        //=j
+        // 计划：call
+        // $row = self::object($sql);
+        $row = $this->row($sql, $col, $direct);
+        $this->sqlDiff('get', $sql);
+        if ($false && false === $row) {
+            return $row;
+        }
+        $set = $this->mem()->setJSON($key, $row, $ttl);
+        return $row;
     }
 
     // 从内存读写多行查询
@@ -969,7 +1069,7 @@ HEREDOC;
         // 不缓存
         if (false === $ttl) {
              $all = self::all($sql);
-             Glob::sqlDiff($sql);
+             $this->sqlDiff('select', $sql);
              return $all;
         }
         // 负值即删除
@@ -990,7 +1090,7 @@ HEREDOC;
         //=j
         $all = self::all($sql);
         $set = $this->mem()->setJSON($key, $all, $ttl);
-        Glob::sqlDiff($sql);
+        $this->sqlDiff('select', $sql);
 
         //=g
         return $all;
