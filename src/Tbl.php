@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0202;
-    const REVISION = 38;
+    const REVISION = 39;
 
     // 配置
     public static $vars = null;
@@ -41,7 +41,9 @@ class Tbl
     public $key = null;
     public $memory_key = null;
     public $sql = array();
+    public $datum = array();
     static $diff = array();
+    static $class = null;
 
     // 编译时
     public $functions = array(
@@ -99,7 +101,7 @@ class Tbl
 
         // 导入配置
         $db = $conf[$this->config_db] ?? array();
-        $item = $conf[$this->config_item] ?? array();
+        $item = $this->_configItem($conf, $this->config_item);
         $variable = array_merge($db, $item);
         // 合并属性
         foreach ($variable as $key => $value) {
@@ -111,6 +113,33 @@ class Tbl
         }
 
         $this->init($vars, $mem, $connect);
+    }
+
+    public function _configItem($conf, $var)
+    {
+        $class = static::$class;
+        if (!is_null($var)) {
+            return $conf[$var] ?? array();
+        }
+
+        $subject = str_replace('\\', '.', $class);
+        $arr = preg_split("#\.src\.model\.#", $subject);
+        $pop = array_pop($arr);
+        $item = Glob::conf($pop, null, $conf);
+        if (is_null($item)) {
+            $split = preg_split("#\.#", $pop);
+            $count = count($split);
+            $name = array_pop($split);
+            if (preg_match_all("#([A-Z]+)([a-z]+)#", $name, $matches)) {
+                $pieces = $matches[0];
+                $str = implode('_', $pieces);
+                $tbl = strtolower($str);
+                $item = [
+                    'table_name' => $tbl,
+                ];
+            }
+        }
+        return $item;
     }
 
     public function __call($name, $arguments)
@@ -384,7 +413,7 @@ class Tbl
         return $str = implode(".", $pieces);
     }
 
-    public function sqlSet($data, $func = null)
+    public function sqlSet($data, $func = null, $empty = null)
     {
         $pieces = [];
         foreach ($data as $key => $value) {
@@ -400,7 +429,27 @@ class Tbl
             }
 
             $type = gettype($value);
-            $val = in_array($type, array('integer')) ? $value : "'". addslashes($value) ."'";
+
+
+            $val = null;
+            if (in_array($type, array('integer')) || is_int($value)) {
+                $val = $value;
+
+            } elseif (is_string($value)) {
+                $vs = addslashes($value);
+                if (!$vs) {
+                    if (is_null($empty)) {
+                        $vs = null;
+                    }
+                }
+
+                if (!is_null($vs)) {
+                    $val = "'". $vs ."'";
+                } else {
+                    $value = null;
+                }
+            }
+
             if (null === $value) {
                 if (null === $func) {
                     continue 1;
@@ -631,7 +680,7 @@ HEREDOC;
         }
 
         // 查询
-        $hash = $this->hash($hash, $json, $where);
+        $hash = $this->hash($hash, $json, $where, $ns);
         $row = $this->memObject($sql, $ttl, $ns, $false, $column, $hash, $len, $single_row);
         return $row;
     }
@@ -719,9 +768,10 @@ HEREDOC;
         $table = self::dbTable();
         $pieces = array(
             'INSERT INTO' => $table,
-            'SET' => $this->sqlSet($data),
+            'SET' => $this->sqlSet($data, null, ''),
         );
         $this->sql[] = $sql = self::sqlPieces($pieces);
+        $this->datum[] = $data;
         $row = self::exec($sql);
         $this->sqlDiff('insert', $sql);
         return self::lastInsertId();
@@ -1179,7 +1229,7 @@ HEREDOC;
         return $row;
     }
 
-    public function hash($hash, $json, $where)
+    public function hash($hash, $json, $where, $ns = null)
     {
         if (0 === $json && $where) {
             $wh = $where;
