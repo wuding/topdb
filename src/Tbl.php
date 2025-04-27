@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0202;
-    const REVISION = 39;
+    const VERSION = 25.0308;
+    const REVISION = 40;
 
     // 配置
     public static $vars = null;
@@ -462,6 +462,37 @@ class Tbl
         return $str = implode(','. PHP_EOL, $pieces);
     }
 
+    function value($value, $func = true, $empty = null)
+    {
+        $type = gettype($value);
+        $val = null;
+        if (in_array($type, array('integer')) || is_int($value)) {
+            $val = $value;
+
+        } elseif (is_string($value)) {
+            $vs = addslashes($value);
+            if (!$vs) {
+                if (is_null($empty)) {
+                    $vs = null;
+                }
+            }
+
+            if (!is_null($vs)) {
+                $val = "'$vs'";
+            } else {
+                $value = null;
+            }
+        }
+
+        if (null === $value) {
+            if (null === $func) {
+                return '__CONTINUE__';
+            }
+            $val = is_null($value) ? 'NULL' : $val;
+        }
+        return $val;
+    }
+
     public function sqlWhere($data, $alias = null)
     {
         if ($alias) {
@@ -763,18 +794,60 @@ HEREDOC;
     }
 
     // 插入单行、批量插入
-    public function insert($data, $fields = null)
+    public function insert($data, $fields = null, $return_sql = null)
     {
+        if (!$data) {
+            return null;
+        }
+
         $table = self::dbTable();
+        $table .= $this->columns($fields);
         $pieces = array(
             'INSERT INTO' => $table,
-            'SET' => $this->sqlSet($data, null, ''),
         );
+        if (!$fields) {
+            $pieces['SET'] = $this->sqlSet($data, null, '');
+            goto _FIN_;
+        }
+        $pieces['VALUES'] = $this->values($data);
+
+        _FIN_:
         $this->sql[] = $sql = self::sqlPieces($pieces);
+        if ($return_sql) {
+            return $sql;
+        }
         $this->datum[] = $data;
         $row = self::exec($sql);
         $this->sqlDiff('insert', $sql);
         return self::lastInsertId();
+    }
+
+    function values($variable)
+    {
+        $pieces = [];
+        foreach ($variable as $key => $var) {
+            $piece = [];
+            foreach ($var as $ke => $valu) {
+                $piece[] = $this->value($valu);
+            }
+            $str = implode(', ', $piece);
+            $pieces[] = "($str)";
+        }
+        return implode(','. PHP_EOL, $pieces);
+    }
+
+    function columns($variable)
+    {
+        if (!$variable) {
+            return null;
+        }
+
+        $pieces = [];
+        foreach ($variable as $key => $value) {
+            $pieces[] = "`$value`";
+        }
+        $col = implode(',', $pieces);
+        return $str = " ($col)";
     }
 
     public function sqlDiff($type, $sql, $table = null)
@@ -791,7 +864,7 @@ HEREDOC;
     }
 
     // 计划：使用拼接方法
-    public function update($data, $where)
+    public function update($data, $where, $return_sql = null)
     {
         $table = self::dbTable();
         $pieces = array(
@@ -800,6 +873,9 @@ HEREDOC;
             'WHERE' => $this->sqlWhere($where),
         );
         $this->sql[] = $sql = self::sqlPieces($pieces);
+        if ($return_sql) {
+            return $sql;
+        }
         $update = self::exec($sql);
         return $update;
     }
