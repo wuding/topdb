@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0308;
-    const REVISION = 40;
+    const VERSION = 25.0610;
+    const REVISION = 41;
 
     // 配置
     public static $vars = null;
@@ -139,6 +139,7 @@ class Tbl
                 ];
             }
         }
+        // print_r(get_defined_vars());
         return $item;
     }
 
@@ -726,6 +727,7 @@ HEREDOC;
             return $all;
         }
 
+        $returns = 'memAll';
         $string = $param_arr[0] ?? null;
         $options = $param_arr[4] ?? null;
         $column = self::columnName($string);
@@ -740,8 +742,11 @@ HEREDOC;
         }
 
         $sql = $this->selectSqlInnerJoin($sql, $innerJoin, $param_arr);
-        $all = $this->memAll($sql, $ttl, $ns, $column, $single_row);
-        return $all;
+        // print_r(get_defined_vars());die;
+        $memAll = $this->memAll($sql, $ttl, $ns, $column, $single_row);
+        // return $all;
+        $vars = get_defined_vars();
+        return $this->return_results($vars, $var_names = $returns);
     }
 
 
