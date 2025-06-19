@@ -8,8 +8,9 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0610;
-    const REVISION = 41;
+    const VERSION = 25.0618;
+    const REVISION = 42;
+    const EDITION = 233500.1750260900;
 
     // 配置
     public static $vars = null;
@@ -449,6 +450,8 @@ class Tbl
                 } else {
                     $value = null;
                 }
+            } elseif (is_object($value)) {
+                $val = $value->scalar ?? null;
             }
 
             if (null === $value) {
