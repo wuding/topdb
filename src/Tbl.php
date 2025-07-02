@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0618;
-    const REVISION = 42;
+    const VERSION = 25.0702;
+    const REVISION = 43;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -434,7 +434,7 @@ class Tbl
 
 
             $val = null;
-            if (in_array($type, array('integer')) || is_int($value)) {
+            if (in_array($type, array('integer', 'double')) || is_int($value)) {
                 $val = $value;
 
             } elseif (is_string($value)) {
@@ -452,6 +452,9 @@ class Tbl
                 }
             } elseif (is_object($value)) {
                 $val = $value->scalar ?? null;
+            } elseif (!in_array($type, ['NULL'])) {
+                print_r([$type, $value, __LINE__, __FILE__]);
+                die;
             }
 
             if (null === $value) {
