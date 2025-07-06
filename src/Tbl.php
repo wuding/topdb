@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0702;
-    const REVISION = 43;
+    const VERSION = 25.0706;
+    const REVISION = 44;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -45,6 +45,7 @@ class Tbl
     public $datum = array();
     static $diff = array();
     static $class = null;
+    var $mem_dbindex = 0;
 
     // 编译时
     public $functions = array(
@@ -453,7 +454,7 @@ class Tbl
             } elseif (is_object($value)) {
                 $val = $value->scalar ?? null;
             } elseif (!in_array($type, ['NULL'])) {
-                print_r([$type, $value, __LINE__, __FILE__]);
+                var_dump([$type, $value, $key, __LINE__, __FILE__]);
                 die;
             }
 
@@ -707,6 +708,7 @@ HEREDOC;
         $hash = null;
         $len = null;
         $single_row = true;
+        $db = $this->mem_dbindex;
         if (is_array($options)) {
             extract($options);
         }
@@ -719,7 +721,7 @@ HEREDOC;
 
         // 查询
         $hash = $this->hash($hash, $json, $where, $ns);
-        $row = $this->memObject($sql, $ttl, $ns, $false, $column, $hash, $len, $single_row);
+        $row = $this->memObject($sql, $ttl, $ns, $false, $column, $hash, $len, $single_row, $db);
         return $row;
     }
 
@@ -743,13 +745,14 @@ HEREDOC;
         $innerJoin = null;
         $ttl = null;
         $ns = 'SELECT';
+        $db = $this->mem_dbindex;
         if (is_array($options)) {
             extract($options);
         }
 
         $sql = $this->selectSqlInnerJoin($sql, $innerJoin, $param_arr);
         // print_r(get_defined_vars());die;
-        $memAll = $this->memAll($sql, $ttl, $ns, $column, $single_row);
+        $memAll = $this->memAll($sql, $ttl, $ns, $column, $single_row, $db);
         // return $all;
         $vars = get_defined_vars();
         return $this->return_results($vars, $var_names = $returns);
@@ -1027,7 +1030,7 @@ HEREDOC;
 
     public function memAll()
     {
-        list($sql, $ttl, $ns, $column, $single_row) = func_get_args();
+        list($sql, $ttl, $ns, $column, $single_row, $db) = func_get_args();
 
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
@@ -1037,10 +1040,13 @@ HEREDOC;
         }
 
         $key = $this->memKey($sql, $ns);
+        $mem = $this->mem();
+        $sel = $mem->select($db);
 
         // 负值即删除
         if (0 > $ttl) {
             $del = $this->mem()->del($key);
+            $reset_db = $mem->db();
             return $del;
         }
 
@@ -1050,6 +1056,7 @@ HEREDOC;
         //=l
         // 错误：可能缓存的值就是 false
         if ('__FALSE__' !== $val) {
+            $reset_db = $mem->db();
             return $val;
         }
 
@@ -1057,6 +1064,7 @@ HEREDOC;
         $all = $this->rows($sql, $column, $single_row);
         $set = $this->mem()->setJSON($key, $all, $ttl);
         $this->sqlDiff('select', $sql);
+        $reset_db = $mem->db();
 
         //=g
         return $all;
@@ -1064,7 +1072,7 @@ HEREDOC;
 
     public function memObject()
     {
-        list($sql, $ttl, $ns, $false, $col, $hash, $len, $single_row) = func_get_args();
+        list($sql, $ttl, $ns, $false, $col, $hash, $len, $single_row, $db) = func_get_args();
 
         //=l
         // 不缓存
@@ -1075,10 +1083,13 @@ HEREDOC;
         }
 
         $key = $this->memKey($sql, $ns, $hash, $len);
+        $mem = $this->mem();
+        $sel = $mem->select($db);
 
         // 负值即删除
         if (0 > $ttl) {
             $del = $this->mem()->del($key);
+            $reset_db = $mem->db();
             return $del;
         }
 
@@ -1087,6 +1098,7 @@ HEREDOC;
 
         //=l
         if ('__FALSE__' !== $val) {
+            $reset_db = $mem->db();
             return $val;
         }
 
@@ -1098,6 +1110,7 @@ HEREDOC;
             return $row;
         }
         $set = $this->mem()->setJSON($key, $row, $ttl);
+        $reset_db = $mem->db();
         return $row;
     }
 
