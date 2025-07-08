@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0706;
-    const REVISION = 44;
+    const VERSION = 25.0709;
+    const REVISION = 45;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -503,6 +503,9 @@ class Tbl
 
     public function sqlWhere($data, $alias = null)
     {
+        if (!$data) {
+            return null;
+        }
         if ($alias) {
             $alias .= '.';
         }
@@ -968,6 +971,9 @@ HEREDOC;
                         $where[$key] = $value;
                     }
                 }
+            } elseif (is_object($condition)) {
+                // 字符串转来的对象
+                $where = $condition->scalar ?? null;
             }
         } else {
             $where = $data;
