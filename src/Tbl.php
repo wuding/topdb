@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0709;
-    const REVISION = 45;
+    const VERSION = 25.0710;
+    const REVISION = 46;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -525,7 +525,7 @@ class Tbl
             }
             $type = gettype($value);
             $valas = addslashes($value);
-            $val = in_array($type, array('integer')) ? $value : "\"$valas\"";
+            $val = in_array($type, array('integer')) ? $value : "'$valas'";
             $pieces[] = "`$key` = $val";
         }
         return $str = implode(' AND '. PHP_EOL, $pieces);
@@ -712,6 +712,7 @@ HEREDOC;
         $len = null;
         $single_row = true;
         $db = $this->mem_dbindex;
+        $type = null;
         if (is_array($options)) {
             extract($options);
         }
@@ -724,7 +725,7 @@ HEREDOC;
 
         // 查询
         $hash = $this->hash($hash, $json, $where, $ns);
-        $row = $this->memObject($sql, $ttl, $ns, $false, $column, $hash, $len, $single_row, $db);
+        $row = $this->memObject($sql, $ttl, $ns, $false, $column, $hash, $len, $single_row, $db, $type);
         return $row;
     }
 
@@ -749,14 +750,13 @@ HEREDOC;
         $ttl = null;
         $ns = 'SELECT';
         $db = $this->mem_dbindex;
+        $type = null;
         if (is_array($options)) {
             extract($options);
         }
 
         $sql = $this->selectSqlInnerJoin($sql, $innerJoin, $param_arr);
-        // print_r(get_defined_vars());die;
-        $memAll = $this->memAll($sql, $ttl, $ns, $column, $single_row, $db);
-        // return $all;
+        $memAll = $this->memAll($sql, $ttl, $ns, $column, $single_row, $db, $type);
         $vars = get_defined_vars();
         return $this->return_results($vars, $var_names = $returns);
     }
@@ -1036,7 +1036,7 @@ HEREDOC;
 
     public function memAll()
     {
-        list($sql, $ttl, $ns, $column, $single_row, $db) = func_get_args();
+        list($sql, $ttl, $ns, $column, $single_row, $db, $type) = func_get_args();
 
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
@@ -1063,12 +1063,13 @@ HEREDOC;
         // 错误：可能缓存的值就是 false
         if ('__FALSE__' !== $val) {
             $reset_db = $mem->db();
-            return $val;
+            return $this->mem_result($val, $type);
         }
 
         //=j
         $all = $this->rows($sql, $column, $single_row);
-        $set = $this->mem()->setJSON($key, $all, $ttl);
+        $arr = $this->mem_sql_result($sql, $all, $type);
+        $set = $this->mem()->setJSON($key, $arr, $ttl);
         $this->sqlDiff('select', $sql);
         $reset_db = $mem->db();
 
@@ -1078,7 +1079,7 @@ HEREDOC;
 
     public function memObject()
     {
-        list($sql, $ttl, $ns, $false, $col, $hash, $len, $single_row, $db) = func_get_args();
+        list($sql, $ttl, $ns, $false, $col, $hash, $len, $single_row, $db, $type) = func_get_args();
 
         //=l
         // 不缓存
@@ -1105,7 +1106,7 @@ HEREDOC;
         //=l
         if ('__FALSE__' !== $val) {
             $reset_db = $mem->db();
-            return $val;
+            return $this->mem_result($val, $type);
         }
 
         //=j
@@ -1115,7 +1116,8 @@ HEREDOC;
         if ($false && false === $row) {
             return $row;
         }
-        $set = $this->mem()->setJSON($key, $row, $ttl);
+        $arr = $this->mem_sql_result($sql, $row, $type);
+        $set = $this->mem()->setJSON($key, $arr, $ttl);
         $reset_db = $mem->db();
         return $row;
     }
@@ -1358,4 +1360,33 @@ HEREDOC;
         return $hash;
     }
 
+/*
+function
+*/
+
+    function mem_result($result, $type = null)
+    {
+        if ($type) {
+            $var = $result->result ?? null;
+            if (is_null($var)) {
+                return $result;
+            }
+            return $var;
+        }
+        return $result;
+    }
+
+    function mem_sql_result($sql, $result, $type = null)
+    {
+        if (!$type) {
+            return $result;
+        }
+
+        $sql_plain = preg_replace("#[\r\n]#", ' ', $sql);
+        $arr = [
+            'sql' => $sql_plain,
+            'result' => $result,
+        ];
+        return $arr;
+    }
 }
