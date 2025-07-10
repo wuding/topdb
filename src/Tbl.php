@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0710;
-    const REVISION = 47;
+    const REVISION = 48;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -1025,6 +1025,7 @@ HEREDOC;
     public function memAll(&$orig, $sql = null, $ttl = null, $ns = null, $column = null, $single_row = null, $db = null, $type = null)
     {
         $time_to_live = null;
+        $return_del = null;
         extract($orig);
 
         // 不缓存
@@ -1042,7 +1043,10 @@ HEREDOC;
         if (0 > $ttl) {
             $del = $this->mem()->del($key);
             $reset_db = $mem->db();
-            return $del;
+            if ($return_del) {
+                return $del;
+            }
+            goto __ROW__;
         }
 
         //=sh
@@ -1056,7 +1060,9 @@ HEREDOC;
         }
 
         //=j
+        __ROW__:
         $all = $this->rows($sql, $column, $single_row);
+        $this->sqlDiff('select', $sql);
         if (!$all && !is_null($time_to_live)) {
             if (false === $time_to_live) {
                 return $all;
@@ -1065,9 +1071,12 @@ HEREDOC;
                 $ttl = $time_to_live;
             }
         }
+        if (0 > $ttl) {
+            return $all;
+        }
+
         $arr = $this->mem_sql_result($sql, $all, $type);
         $set = $this->mem()->setJSON($key, $arr, $ttl);
-        $this->sqlDiff('select', $sql);
         $reset_db = $mem->db();
 
         //=g
@@ -1077,6 +1086,7 @@ HEREDOC;
     public function memObject(&$orig, $sql = null, $ttl = null, $ns = null, $false = null, $column = null, $hash = null, $len = null, $single_row = null, $db = null, $type = null)
     {
         $time_to_live = null;
+        $return_del = null;
         extract($orig);
 
         //=l
@@ -1095,7 +1105,10 @@ HEREDOC;
         if (0 > $ttl) {
             $del = $this->mem()->del($key);
             $reset_db = $mem->db();
-            return $del;
+            if ($return_del) {
+                return $del;
+            }
+            goto __ROW__;
         }
 
         //=sh
@@ -1109,6 +1122,7 @@ HEREDOC;
 
         //=j
         // 计划：call
+        __ROW__:
         $row = $this->row($sql, $column, $single_row);
         $this->sqlDiff('get', $sql);
         if (!$row && !is_null($time_to_live)) {
@@ -1122,6 +1136,10 @@ HEREDOC;
         if ($false && false === $row) {
             return $row;
         }
+        if (0 > $ttl) {
+            return $row;
+        }
+
         $arr = $this->mem_sql_result($sql, $row, $type);
         $set = $this->mem()->setJSON($key, $arr, $ttl);
         $reset_db = $mem->db();
