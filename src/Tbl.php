@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0710;
-    const REVISION = 46;
+    const REVISION = 47;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -704,15 +704,6 @@ HEREDOC;
     {
         //=f
         $returns = null;
-        $ttl = null;
-        $ns = 'GET';
-        $false = null;
-        $json = null;
-        $hash = null;
-        $len = null;
-        $single_row = true;
-        $db = $this->mem_dbindex;
-        $type = null;
         if (is_array($options)) {
             extract($options);
         }
@@ -724,8 +715,10 @@ HEREDOC;
         }
 
         // 查询
-        $hash = $this->hash($hash, $json, $where, $ns);
-        $row = $this->memObject($sql, $ttl, $ns, $false, $column, $hash, $len, $single_row, $db, $type);
+        $options['column'] = $column;
+        $options['sql'] = $sql;
+        $orig = self::mem_object_orig($options, $where);
+        $row = $this->memObject($orig);
         return $row;
     }
 
@@ -742,21 +735,16 @@ HEREDOC;
         $returns = 'memAll';
         $string = $param_arr[0] ?? null;
         $options = $param_arr[4] ?? null;
-        $column = self::columnName($string);
-
-        $single_row = null;
         $sql = null;
         $innerJoin = null;
-        $ttl = null;
-        $ns = 'SELECT';
-        $db = $this->mem_dbindex;
-        $type = null;
         if (is_array($options)) {
             extract($options);
         }
 
         $sql = $this->selectSqlInnerJoin($sql, $innerJoin, $param_arr);
-        $memAll = $this->memAll($sql, $ttl, $ns, $column, $single_row, $db, $type);
+        $options['sql'] = $sql;
+        $orig = self::mem_all_orig($options, $string);
+        $memAll = $this->memAll($orig);
         $vars = get_defined_vars();
         return $this->return_results($vars, $var_names = $returns);
     }
@@ -1034,9 +1022,10 @@ HEREDOC;
         return $key = "$ns:$md5";
     }
 
-    public function memAll()
+    public function memAll(&$orig, $sql = null, $ttl = null, $ns = null, $column = null, $single_row = null, $db = null, $type = null)
     {
-        list($sql, $ttl, $ns, $column, $single_row, $db, $type) = func_get_args();
+        $time_to_live = null;
+        extract($orig);
 
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
@@ -1068,6 +1057,14 @@ HEREDOC;
 
         //=j
         $all = $this->rows($sql, $column, $single_row);
+        if (!$all && !is_null($time_to_live)) {
+            if (false === $time_to_live) {
+                return $all;
+            }
+            if (is_int($time_to_live)) {
+                $ttl = $time_to_live;
+            }
+        }
         $arr = $this->mem_sql_result($sql, $all, $type);
         $set = $this->mem()->setJSON($key, $arr, $ttl);
         $this->sqlDiff('select', $sql);
@@ -1077,14 +1074,15 @@ HEREDOC;
         return $all;
     }
 
-    public function memObject()
+    public function memObject(&$orig, $sql = null, $ttl = null, $ns = null, $false = null, $column = null, $hash = null, $len = null, $single_row = null, $db = null, $type = null)
     {
-        list($sql, $ttl, $ns, $false, $col, $hash, $len, $single_row, $db, $type) = func_get_args();
+        $time_to_live = null;
+        extract($orig);
 
         //=l
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
-            $row = $this->row($sql, $col, $single_row);
+            $row = $this->row($sql, $column, $single_row);
             $this->sqlDiff('get', $sql);
             return $row;
         }
@@ -1111,8 +1109,16 @@ HEREDOC;
 
         //=j
         // 计划：call
-        $row = $this->row($sql, $col, $single_row);
+        $row = $this->row($sql, $column, $single_row);
         $this->sqlDiff('get', $sql);
+        if (!$row && !is_null($time_to_live)) {
+            if (false === $time_to_live) {
+                return $row;
+            }
+            if (is_int($time_to_live)) {
+                $ttl = $time_to_live;
+            }
+        }
         if ($false && false === $row) {
             return $row;
         }
@@ -1363,6 +1369,45 @@ HEREDOC;
 /*
 function
 */
+
+    function mem_all_orig($options, $string)
+    {
+        $ttl = null;
+        $sql = null;
+        $column = self::columnName($string);
+        $single_row = null;
+        $ns = 'SELECT';
+        $db = $this->mem_dbindex;
+        $type = null;
+        $time_to_live = null;
+        if (is_array($options)) {
+            extract($options);
+        }
+        unset($options, $string);
+        return get_defined_vars();
+    }
+
+    function mem_object_orig($options, $where = null)
+    {
+        $ttl = null;
+        $sql = null;
+        $column = '*';
+        $single_row = true;
+        $ns = 'GET';
+        $hash = null;
+        $len = null;
+        $db = $this->mem_dbindex;
+        $type = null;
+        $time_to_live = null;
+        $false = null;
+        $json = null;
+        if (is_array($options)) {
+            extract($options);
+        }
+        $hash = $this->hash($hash, $json, $where, $ns);
+        unset($options);
+        return get_defined_vars();
+    }
 
     function mem_result($result, $type = null)
     {
