@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0710;
-    const REVISION = 48;
+    const REVISION = 49;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -1026,7 +1026,9 @@ HEREDOC;
     {
         $time_to_live = null;
         $return_del = null;
+        $opt = [];
         extract($orig);
+        unset($orig);
 
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
@@ -1056,7 +1058,7 @@ HEREDOC;
         // 错误：可能缓存的值就是 false
         if ('__FALSE__' !== $val) {
             $reset_db = $mem->db();
-            return $this->mem_result($val, $type);
+            return $this->mem_result($val, $type, []);
         }
 
         //=j
@@ -1075,7 +1077,7 @@ HEREDOC;
             return $all;
         }
 
-        $arr = $this->mem_sql_result($sql, $all, $type);
+        $arr = $this->mem_sql_result($opt, $sql, $all, $type);
         $set = $this->mem()->setJSON($key, $arr, $ttl);
         $reset_db = $mem->db();
 
@@ -1087,7 +1089,9 @@ HEREDOC;
     {
         $time_to_live = null;
         $return_del = null;
+        $opt = [];
         extract($orig);
+        unset($orig);
 
         //=l
         // 不缓存
@@ -1117,7 +1121,7 @@ HEREDOC;
         //=l
         if ('__FALSE__' !== $val) {
             $reset_db = $mem->db();
-            return $this->mem_result($val, $type);
+            return $this->mem_result($val, $type, false);
         }
 
         //=j
@@ -1140,7 +1144,7 @@ HEREDOC;
             return $row;
         }
 
-        $arr = $this->mem_sql_result($sql, $row, $type);
+        $arr = $this->mem_sql_result($opt, $sql, $row, $type);
         $set = $this->mem()->setJSON($key, $arr, $ttl);
         $reset_db = $mem->db();
         return $row;
@@ -1427,10 +1431,10 @@ function
         return get_defined_vars();
     }
 
-    function mem_result($result, $type = null)
+    function mem_result($result, $type = null, $value = null)
     {
         if ($type) {
-            $var = $result->result ?? null;
+            $var = $result->data ?? $value;
             if (is_null($var)) {
                 return $result;
             }
@@ -1439,17 +1443,27 @@ function
         return $result;
     }
 
-    function mem_sql_result($sql, $result, $type = null)
+    function mem_sql_result(&$orig, $sql, $result, $type = null)
     {
+        extract($orig);
         if (!$type) {
             return $result;
         }
 
+        $count = count($result);
         $sql_plain = preg_replace("#[\r\n]#", ' ', $sql);
         $arr = [
-            'sql' => $sql_plain,
-            'result' => $result,
+            'info' => [
+                'count' => $count,
+                'sql' => $sql_plain,
+                'type' => $type,
+            ],
+            'page' => [
+            ],
+            'data' => $result,
         ];
-        return $arr;
+        $array_merge = array_merge($arr, $orig[''] ?? []);
+        unset($result, $arr);
+        return $array_merge;
     }
 }
