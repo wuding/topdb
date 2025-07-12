@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0710;
-    const REVISION = 49;
+    const VERSION = 25.0712;
+    const REVISION = 50;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -633,7 +633,7 @@ class Tbl
             'LIMIT' => $this->sqlLimit($limit),
             'OFFSET' => $offset,
         );
-        $this->sql[] = $sql = self::sqlPieces($pieces);
+        $sql = self::sqlPieces($pieces);
         return $sql;
     }
 
@@ -1195,6 +1195,7 @@ HEREDOC;
         if (false === $ttl) {
              $all = self::all($sql);
              $this->sqlDiff('select', $sql);
+             $this->sql[] = $sql;
              return $all;
         }
         // 负值即删除
@@ -1216,6 +1217,7 @@ HEREDOC;
         $all = self::all($sql);
         $set = $this->mem()->setJSON($key, $all, $ttl);
         $this->sqlDiff('select', $sql);
+        $this->sql[] = $sql;
 
         //=g
         return $all;
