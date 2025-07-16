@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0712;
-    const REVISION = 50;
+    const VERSION = 25.0716;
+    const REVISION = 51;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -132,7 +132,7 @@ class Tbl
             $split = preg_split("#\.#", $pop);
             $count = count($split);
             $name = array_pop($split);
-            if (preg_match_all("#([A-Z]+)([a-z]+)#", $name, $matches)) {
+            if (preg_match_all("#([A-Z]+)([a-z0-9]+)#", $name, $matches)) {
                 $pieces = $matches[0];
                 $str = implode('_', $pieces);
                 $tbl = strtolower($str);
