@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0717;
-    const REVISION = 52;
+    const REVISION = 53;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -1144,6 +1144,7 @@ HEREDOC;
             return $row;
         }
 
+        $opt['count_val'] = 1;
         $arr = $this->mem_sql_result($opt, $sql, $row, $type);
         $set = $this->mem()->setJSON($key, $arr, $ttl);
         $reset_db = $mem->db();
@@ -1447,12 +1448,15 @@ function
 
     function mem_sql_result(&$orig, $sql, $result, $type = null)
     {
+        $count_val = -1;
+        $countable = null;
         extract($orig);
         if (!$type) {
             return $result;
         }
 
-        $count = count($result);
+        $is_countable = is_null($countable) ? is_countable($result) : $countable;
+        $count = $is_countable ? count($result) : $count_val;
         $sql_plain = preg_replace("#[\r\n]#", ' ', $sql);
         $arr = [
             'info' => [
