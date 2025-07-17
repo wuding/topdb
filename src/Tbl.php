@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0716;
-    const REVISION = 51;
+    const VERSION = 25.0717;
+    const REVISION = 52;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -1460,8 +1460,8 @@ function
                 'sql' => $sql_plain,
                 'type' => $type,
             ],
-            'page' => [
-            ],
+            'page' => null,
+            'user' => null,
             'data' => $result,
         ];
         $array_merge = array_merge($arr, $orig[''] ?? []);
