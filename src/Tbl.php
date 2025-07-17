@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0717;
-    const REVISION = 54;
+    const REVISION = 55;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -222,8 +222,10 @@ class Tbl
 
         if ($if_true) {
             self::$connects[$key] = $conn = new PFSys($this->functions, $db_table);
-        } else {
+        } elseif (!self::$maintenance) {
             self::$connects[$key] = $conn = new PDObj($dsn_results['dsn'], $username, $password, $options);
+        } else {
+            self::$connects[$key] = $conn = false;
         }
 
         $this->data['connect'] = get_defined_vars();
