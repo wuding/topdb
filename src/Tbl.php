@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 25.0717;
-    const REVISION = 53;
+    const REVISION = 54;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -45,6 +45,7 @@ class Tbl
     public $datum = array();
     static $diff = array();
     static $class = null;
+    static $maintenance = null;
     var $mem_dbindex = 0;
 
     // 编译时
@@ -1003,12 +1004,18 @@ HEREDOC;
 
     public function row($sql, $col, $single_row)
     {
+        if (self::$maintenance) {
+            return false;
+        }
         $row = self::object($sql);
         return $this->single_row($row, $col, $single_row, 1);
     }
 
     public function rows($sql, $col, $single_row)
     {
+        if (self::$maintenance) {
+            return false;
+        }
         $all = self::all($sql);
         return $this->single_row($all, $col, $single_row);
     }
@@ -1072,6 +1079,9 @@ HEREDOC;
             if (is_int($time_to_live)) {
                 $ttl = $time_to_live;
             }
+        }
+        if (self::$maintenance) {
+            $ttl = -1;
         }
         if (0 > $ttl) {
             return $all;
@@ -1139,6 +1149,9 @@ HEREDOC;
         }
         if ($false && false === $row) {
             return $row;
+        }
+        if (self::$maintenance) {
+            $ttl = -1;
         }
         if (0 > $ttl) {
             return $row;
