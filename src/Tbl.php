@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0717;
-    const REVISION = 55;
+    const VERSION = 25.0724;
+    const REVISION = 56;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -881,6 +881,11 @@ HEREDOC;
             'WHERE' => $this->sqlWhere($where),
         );
         $this->sql[] = $sql = self::sqlPieces($pieces);
+        if (!$where) {
+            var_dump([__LINE__, __FILE__, get_defined_vars()]);
+            die;
+        }
+
         if ($return_sql) {
             return $sql;
         }
