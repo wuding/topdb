@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 25.0724;
-    const REVISION = 56;
+    const VERSION = 26.0324;
+    const REVISION = 57;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -46,6 +46,7 @@ class Tbl
     static $diff = array();
     static $class = null;
     static $maintenance = null;
+    static $sql_str = [];
     var $mem_dbindex = 0;
 
     // 编译时
@@ -643,7 +644,7 @@ class Tbl
     public function selectSqlInnerJoin($sql, $innerJoin, $param_arr)
     {
         if ($sql) {
-            $this->sql[] = $sql;
+            self::$sql_str[] = $this->sql[] = $sql;
             return $sql;
         }
 
@@ -674,7 +675,7 @@ HEREDOC;
             $sql = call_user_func_array(array($this, 'selectSql'), $param_arr);
         }
 
-        $this->sql[] = $sql;
+        self::$sql_str[] = $this->sql[] = $sql;
         return $sql;
     }
 
@@ -712,7 +713,7 @@ HEREDOC;
         }
 
         // 拼接 SQL
-        $this->sql[] = $sql = self::selectSql($column, $where, $order, 1, $options);
+        self::$sql_str[] = $this->sql[] = $sql = self::selectSql($column, $where, $order, 1, $options);
         if ('sql' === $returns) {
             return $sql;
         }
@@ -820,7 +821,7 @@ HEREDOC;
         $pieces['VALUES'] = $this->values($data);
 
         _FIN_:
-        $this->sql[] = $sql = self::sqlPieces($pieces);
+        self::$sql_str[] = $this->sql[] = $sql = self::sqlPieces($pieces);
         if ($return_sql) {
             return $sql;
         }
@@ -880,7 +881,7 @@ HEREDOC;
             'SET' => $this->sqlSet($data, 'update'),
             'WHERE' => $this->sqlWhere($where),
         );
-        $this->sql[] = $sql = self::sqlPieces($pieces);
+        self::$sql_str[] = $this->sql[] = $sql = self::sqlPieces($pieces);
         if (!$where) {
             var_dump([__LINE__, __FILE__, get_defined_vars()]);
             die;
@@ -1216,7 +1217,7 @@ HEREDOC;
         if (false === $ttl) {
              $all = self::all($sql);
              $this->sqlDiff('select', $sql);
-             $this->sql[] = $sql;
+             self::$sql_str[] = $this->sql[] = $sql;
              return $all;
         }
         // 负值即删除
@@ -1238,7 +1239,7 @@ HEREDOC;
         $all = self::all($sql);
         $set = $this->mem()->setJSON($key, $all, $ttl);
         $this->sqlDiff('select', $sql);
-        $this->sql[] = $sql;
+        self::$sql_str[] = $this->sql[] = $sql;
 
         //=g
         return $all;
@@ -1325,7 +1326,7 @@ HEREDOC;
             'FROM' => $table,
             'WHERE' => $this->sqlWhere($where),
         );
-        $this->sql[] = $sql = self::sqlPieces($pieces);
+        self::$sql_str[] = $this->sql[] = $sql = self::sqlPieces($pieces);
         $row = self::object($sql);
         return $row->num;
     }
