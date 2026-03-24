@@ -9,7 +9,7 @@ use Pkg\{PFSys};
 class Tbl
 {
     const VERSION = 26.0324;
-    const REVISION = 57;
+    const REVISION = 58;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -746,8 +746,13 @@ HEREDOC;
         }
 
         $sql = $this->selectSqlInnerJoin($sql, $innerJoin, $param_arr);
+        if ('sql' === $returns) {
+            return $sql;
+        }
         $options['sql'] = $sql;
         $orig = self::mem_all_orig($options, $string);
+        // print_r(get_defined_vars());
+        #die;
         $memAll = $this->memAll($orig);
         $vars = get_defined_vars();
         return $this->return_results($vars, $var_names = $returns);
@@ -1028,7 +1033,7 @@ HEREDOC;
         return $this->single_row($all, $col, $single_row);
     }
 
-    public function memKey($sql, $ns = 'SELECT', $hash = null, $len = null)
+    static function memKey($sql, $ns = 'SELECT', $hash = null, $len = null)
     {
         $md5 = $hash ?: md5($sql);
         if (!$hash && is_int($len)) {
@@ -1041,7 +1046,9 @@ HEREDOC;
     {
         $time_to_live = null;
         $return_del = null;
+        $return_false = null;
         $opt = [];
+        $filename = null;
         extract($orig);
         unset($orig);
 
@@ -1052,7 +1059,7 @@ HEREDOC;
              return $all;
         }
 
-        $key = $this->memKey($sql, $ns);
+        $key = self::memKey($sql, $ns);
         $mem = $this->mem();
         $sel = $mem->select($db);
 
@@ -1074,6 +1081,8 @@ HEREDOC;
         if ('__FALSE__' !== $val) {
             $reset_db = $mem->db();
             return $this->mem_result($val, $type, []);
+        } elseif ($return_false) {
+            return $val;
         }
 
         //=j
@@ -1099,6 +1108,9 @@ HEREDOC;
         $set = $this->mem()->setJSON($key, $arr, $ttl);
         $reset_db = $mem->db();
 
+        // mem cache file
+        $file_put_contents = $filename ? file_put_contents($filename, json_encode($arr)) : null;
+
         //=g
         return $all;
     }
@@ -1119,7 +1131,7 @@ HEREDOC;
             return $row;
         }
 
-        $key = $this->memKey($sql, $ns, $hash, $len);
+        $key = self::memKey($sql, $ns, $hash, $len);
         $mem = $this->mem();
         $sel = $mem->select($db);
 
