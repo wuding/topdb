@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 26.0329;
-    const REVISION = 59;
+    const VERSION = 26.0331;
+    const REVISION = 60;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -387,7 +387,7 @@ class Tbl
             $this->db_origin,
             $this->db_suffix,
         );
-        $this->db_name = implode('', $pieces);
+        $this->db_name = $this->db_name ?: implode('', $pieces);
     }
 
     public function _setTableName()
@@ -1003,11 +1003,26 @@ HEREDOC;
         }
 
         if ($insert_created) {
+            $fields = null;
+            if (is_array($insert_created)) {
+                extract($insert_created);
+                $insert_created = $insert_created[0];
+            }
+            $variable = !$fields ? [] : explode(',', $fields);
+
+            $create = microtime(true);
             $created = time();
             if ('time' !== $insert_created) {
                 $created = date($insert_created);
             }
             $data['created'] = $created;
+            foreach ($variable as $key => $value) {
+                $val = $$value ?? null;
+                if (is_null($val)) {
+                    print_r([__LINE__, __FILE__, get_defined_vars()]);die;
+                }
+                $data[$value] = $val;
+            }
         }
 
         $data = array_merge($data, $insert);
