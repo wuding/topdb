@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 26.0324;
-    const REVISION = 58;
+    const VERSION = 26.0329;
+    const REVISION = 59;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -422,6 +422,7 @@ class Tbl
 
     public function sqlSet($data, $func = null, $empty = null)
     {
+        $from = null;
         $pieces = [];
         foreach ($data as $key => $value) {
             if ('' === $key) {
@@ -458,7 +459,9 @@ class Tbl
             } elseif (is_object($value)) {
                 $val = $value->scalar ?? null;
             } elseif (!in_array($type, ['NULL'])) {
+
                 var_dump([$type, $value, $key, __LINE__, __FILE__]);
+                debug_backtrace();
                 die;
             }
 
@@ -878,8 +881,9 @@ HEREDOC;
     }
 
     // 计划：使用拼接方法
-    public function update($data, $where, $return_sql = null)
+    public function update($data, $where, $return_sql = null, $var_array = [])
     {
+        extract($var_array);
         $table = self::dbTable();
         $pieces = array(
             'UPDATE' => $table,
