@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 26.0331;
-    const REVISION = 60;
+    const VERSION = 26.0510;
+    const REVISION = 61;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -1043,12 +1043,19 @@ HEREDOC;
         return $this->single_row($row, $col, $single_row, 1);
     }
 
-    public function rows($sql, $col, $single_row)
+    public function rows($sql, $col, $single_row, $prepare = null)
     {
+        $params = null;
+        $func = 'fetchAll';
         if (self::$maintenance) {
             return false;
         }
-        $all = self::all($sql);
+        if ($prepare) {
+            $all = self::pre($sql, $prepare);
+        } else {
+            $all = self::all($sql);
+        }
+
         return $this->single_row($all, $col, $single_row);
     }
 
@@ -1061,32 +1068,33 @@ HEREDOC;
         return $key = "$ns:$md5";
     }
 
-    public function memAll(&$orig, $sql = null, $ttl = null, $ns = null, $column = null, $single_row = null, $db = null, $type = null)
+    public function memAll($orig, $sql = null, $ttl = null, $ns = null, $column = null, $single_row = null, $db = null, $type = null)
     {
         $time_to_live = null;
         $return_del = null;
         $return_false = null;
         $opt = [];
-        $filename = null;
+        $filename = $hash = $del = $prepare = null;
         extract($orig);
         unset($orig);
 
         // 不缓存
         if (false === $ttl || is_null($ttl)) {
-             $all = $this->rows($sql, $column, $single_row);
+             $all = $this->rows($sql, $column, $single_row, $prepare);
              $this->sqlDiff('select', $sql);
              return $all;
         }
 
-        $key = self::memKey($sql, $ns);
+        $key = self::memKey($sql, $ns, $hash);
         $mem = $this->mem();
         $sel = $mem->select($db);
 
         // 负值即删除
-        if (0 > $ttl) {
+        if (0 > $ttl || 'del' === $del) {
             $del = $this->mem()->del($key);
-            $reset_db = $mem->db();
+
             if ($return_del) {
+                $reset_db = $mem->db();
                 return $del;
             }
             goto __ROW__;
@@ -1106,7 +1114,7 @@ HEREDOC;
 
         //=j
         __ROW__:
-        $all = $this->rows($sql, $column, $single_row);
+        $all = $this->rows($sql, $column, $single_row, $prepare);
         $this->sqlDiff('select', $sql);
         if (!$all && !is_null($time_to_live)) {
             if (false === $time_to_live) {
@@ -1134,7 +1142,7 @@ HEREDOC;
         return $all;
     }
 
-    public function memObject(&$orig, $sql = null, $ttl = null, $ns = null, $false = null, $column = null, $hash = null, $len = null, $single_row = null, $db = null, $type = null)
+    public function memObject($orig, $sql = null, $ttl = null, $ns = null, $false = null, $column = null, $hash = null, $len = null, $single_row = null, $db = null, $type = null)
     {
         $time_to_live = null;
         $return_del = null;
@@ -1456,7 +1464,7 @@ function
         $ns = 'SELECT';
         $db = $this->mem_dbindex;
         $type = null;
-        $time_to_live = null;
+        $time_to_live = $hash = $del = null;
         if (is_array($options)) {
             extract($options);
         }
@@ -1498,7 +1506,7 @@ function
         return $result;
     }
 
-    function mem_sql_result(&$orig, $sql, $result, $type = null)
+    function mem_sql_result($orig, $sql, $result, $type = null)
     {
         $count_val = -1;
         $countable = null;
