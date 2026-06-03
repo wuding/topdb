@@ -8,8 +8,8 @@ use Pkg\{PFSys};
 
 class Tbl
 {
-    const VERSION = 26.0510;
-    const REVISION = 61;
+    const VERSION = 26.0513;
+    const REVISION = 62;
     const EDITION = 233500.1750260900;
 
     // 配置
@@ -420,7 +420,7 @@ class Tbl
         return $str = implode(".", $pieces);
     }
 
-    public function sqlSet($data, $func = null, $empty = null)
+    public function sqlSet($data, $func = null, $empty = null, $table = null)
     {
         $from = null;
         $pieces = [];
@@ -460,7 +460,7 @@ class Tbl
                 $val = $value->scalar ?? null;
             } elseif (!in_array($type, ['NULL'])) {
 
-                var_dump([$type, $value, $key, __LINE__, __FILE__]);
+                var_dump([$type, $value, $key, $table, $data, __LINE__, __FILE__]);
                 debug_backtrace();
                 die;
             }
@@ -823,7 +823,7 @@ HEREDOC;
             'INSERT INTO' => $table,
         );
         if (!$fields) {
-            $pieces['SET'] = $this->sqlSet($data, null, '');
+            $pieces['SET'] = $this->sqlSet($data, null, '', $table);
             goto _FIN_;
         }
         $pieces['VALUES'] = $this->values($data);
